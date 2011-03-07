@@ -1,7 +1,7 @@
 import threading
 from Util import call
 
-class WorkerThread(threading.Thread):
+class PluginDispatcherWorkerThread(threading.Thread):
     running = True
     ID = -1
     pushResponse = None
@@ -24,16 +24,18 @@ class WorkerThread(threading.Thread):
             if response:
                 self.pushResponse(response)
 
-    def stop(self):
+    def Stop(self):
         self.running = False
         
-class PluginQueue:
+class PluginDispatcher:
     __queue__=[]
     __workerThreads__=[]
     __lock__ = threading.Condition()
-    def __init__(self,handler):
+    
+    ResponseHandler=None
+    def __init__(self):
         for i in xrange(5):
-            worker = WorkerThread(self.dequeueFunc,handler,i)
+            worker = PluginDispatcherWorkerThread(self.dequeueFunc,self.ResponseHandler,i)
             #worker.setDaemon(True)
             self.__workerThreads__+=[worker]
             worker.start()
@@ -47,8 +49,8 @@ class PluginQueue:
         self.__lock__.release()
         return out
     
-    def setResponseManager(self,manager):
-        self.responseManager = manager
+    def SetResponseHandler(self,resp):
+        self.ResponseHandler = resp
 
     def enqueueFunc(self, func, args):
         self.__lock__.acquire()
@@ -56,8 +58,8 @@ class PluginQueue:
         self.__lock__.notify()
         self.__lock__.release()
 
-    def stop(self):
+    def Stop(self):
         del self.__queue__[:]
         for t in self.__workerThreads__:
             self.enqueueFunc(None,None)
-            t.stop()
+            t.Stop()
