@@ -42,7 +42,7 @@ class Core:
         matches = pm.GetMatchingFunctions(event)
 
         print "-"*80
-        print matches
+        print len(matches),"Matches"
 
         for inst,func,args in matches:
             

@@ -82,10 +82,13 @@ class PluginManager:
     def GetMatchingFunctions(self,event):
         matched = []
         for inst,func in self.__hooks__: 
-            print inst,func.sbhook
-            
+            print "Trying match:"
+            print inst
+            print func, func.sbhook
+            print event
             args = self.tryMatch(func,event)
-            if args:
+            print "Try match returned: ", args
+            if args!=None:
                 print "PM: Matched function:"
                 print inst
                 print func
@@ -96,19 +99,23 @@ class PluginManager:
 
     def tryMatch(self,func,eventD):
         for hookD in func.sbhook:
+            print "  ",hookD
             args = {}
             for key,pattern in hookD.items():
+                print "     ",key,pattern
                 value = eventD.get(key)
-                if value == None:
+                if value == None:     
+                    print "---- 1"
                     break # plugin wanted to match something the event didn't have 
                 
                 m = match(pattern,value)
                 if m == None:
+                    print "---- 2"
                     break # Didn't match
 
                 for k,v in m.groupdict().items(): #named capture groups
                     args[k]=v
                 for i,v in enumerate(m.groups()): #unnamed
                     args[key+str(i)]=v
-
+                print "---- 3"
                 return args

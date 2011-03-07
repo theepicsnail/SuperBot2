@@ -51,6 +51,8 @@ class PluginDispatcher:
         out = self.__queue__[0]
         self.__queue__=self.__queue__[1:]
         self.__lock__.release()
+        print "Dequeue:"
+        print out
         return out
     
     def SetResponseHandler(self,resp):
@@ -59,6 +61,8 @@ class PluginDispatcher:
             worker.consume=resp
 
     def Enqueue(self, t):
+        print "Enqueue:"
+        print t
         self.__lock__.acquire()
         self.__queue__.append(t)
         self.__lock__.notify()
