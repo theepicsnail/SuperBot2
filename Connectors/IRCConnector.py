@@ -1,4 +1,5 @@
 from Interfaces import Connector
+from Configuration import ConfigFile
 from zope.interface import implements
 from twisted.words.protocols import irc
 from twisted.internet import protocol,reactor
@@ -38,81 +39,61 @@ class IRCConnectorEvents:
 
 class IRCConnector(protocol.ClientFactory,irc.IRCClient,object):
     implements(Connector)
+    EventHandler = None
 
-
-    def pushEvent(self,eventInfo):        
+    def HandleResponse(self,eventInfo):        
         f = getattr(self,eventInfo[0],None)
         if f:
             f(*eventInfo[1:])
-   
- 
-    onEvent      = None
-    onConnect    = None
-    onDisconnect = None
-    onError      = None
-
-    configuration = {}
+    def SetEventHandler(self,func):
+        self.EventHandler=func
     def buildProtocol(self,addr):
         return self
 
     def handleCommand(self,cmd,prefix,params):
         super(IRCConnector, self).handleCommand(cmd,prefix,params)
 
-        if self.onEvent:
+        if self.EventHandler:
             event = {}
             event["command"]=cmd
             event["prefix"]=prefix
             event["target"]=params[0]
             if len(params)==2:
                 event["message"]=params[1]
-            self.onEvent(event) 
+            self.EventHandler(event) 
 
 
     def __init__(self):
         self.eventObj  = IRCConnectorEvents()
         self.protocol = self
-        
-    def connect(self): 
-        print "Connect"
-        if not self.configuration.has_key("host"): return
-        if not self.configuration.has_key("port"): return
-        if not self.configuration.has_key("nick"): return
+        self.config = ConfigFile("IRCConnector")
 
-        self.nickname=self.configuration["nick"]
-        reactor.connectTCP(
-                self.configuration["host"],
-                self.configuration["port"],
-                self)
+    def Start(self): 
+        print "Connect", self.config
+        
+        server = self.config["Connection","Server"]
+        port = int(self.config["Connection","Port"])
+        nick = self.config["Connection","Nick"]
+
+        if not server:
+            print "No 'Connection:Server' specified."
+            return
+        if not port: 
+            print "No 'Connection:Port' specified."
+            return
+        if not nick: 
+            print "No 'Connection:Nick' specified."
+            return
+
+        self.nickname=nick
+        reactor.connectTCP(server,port,self)
         reactor.run()
 
-    def disconnect(self): 
+    def Stop(self): 
         print "Disconnect"
-        if self.onDisconnect: self.onDisconnect()
 
-    def getEvents(self):
+    def GetResponseObject(self):
         return self.eventObj
 
         
-
-    def configure(self,*a,**b):
-        self.configuration=b
-
-
-    #Client Factory stuff 
-    #TODO: eventually override this with reconnection stuff
-    #def clientConnectionFailed(self, connector, reason):
-    #def clientConnectionLost(self,connector, reason):
-
-    #call backs
-    def setConnectCallback(self,c):
-        self.onConnect = c
-
-    def setDisconnectCallback(self,c):
-        self.onDisconnect = c
-
-    def setErrorCallback(self,c):
-        self.onError = c
-
-    def setEventCallback(self,callback): 
-        self.onEvent = callback
 

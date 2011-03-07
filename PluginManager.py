@@ -21,10 +21,7 @@ class PluginManager:
         log.error("hasPlugin %s",plug)
         return self.__plugins__.has_key(plug)
     
-    def addSearchPath(self,path):
-        sys.path.append(path)
-    
-    def loadService(self,serv):
+    def LoadService(self,serv):
         return True
     
     def checkRequirements(self,cls):
@@ -54,8 +51,6 @@ class PluginManager:
             if not self.hasService(s) and self.AutoLoadDeps:
                 self.loadService(s)
         
-    def getHooks(self):
-        return self.__hooks__    
     
     def addHook(self, inst, func):
         hookArgs = func.sbhook
@@ -63,8 +58,8 @@ class PluginManager:
         
 
 
-    def loadPlugin(self,pname):
-        plug = __import__(pname,fromlist=(pname,))
+    def LoadPlugin(self,pname):
+        plug = __import__("Plugins.%s"%pname,globals(),locals(),pname)
         cls = getattr(plug,pname,None)
         if isclass(cls): #plugin has a self-titled class
             if not self.checkRequirements(cls):
@@ -84,4 +79,7 @@ class PluginManager:
             pass
 
 
-
+    def GetMatchingFunctions(self,event):
+        for inst,func in self.__hooks__: 
+            print inst,func
+        return []
