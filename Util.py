@@ -22,4 +22,7 @@ def call(func, args):
     print "  ",args
     print "  ",reqArgs
     print "  ",passedArgs    
-    return func(*passedArgs)
+    r = func(*passedArgs)
+    print "  ",r
+    print "----------------"
+    return r
