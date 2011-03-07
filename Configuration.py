@@ -27,7 +27,8 @@ class ConfigFile:
                 elif exp==bool: return self._Config.getboolean(*narg)
                 elif exp==int:  return self._Config.getint(*narg)
                 elif exp==float:return self._Config.getfloat(*narg)
-                else: return None #log error
+                else: 
+                     return exp(self._Config.get(*narg))
         elif type(arg)==str:
             return self._Config.items(arg)
         else: 
@@ -43,7 +44,11 @@ if __name__=="__main__":
         print section
         for item in cf[section]:
             print item
-    print cf["Section1","arg2",int]
+
+    def converter(read):
+        return map(int,read.split())
+    print cf["Section1","arg1",converter]
+
     print cf["Section1","arg2",bool]
     print cf["Section2","arg1",str]
 
