@@ -1,46 +1,93 @@
 from Interfaces import Connector
 from ResponseManager import ResponseManager
 from PluginManager import PluginManager
-from PluginQueue import *
+from PluginDispatcher import PluginDispatcher
+from Configuration import ConfigFile
 from re import match
 from sys import path
 from os import getcwd
 from Util import dictJoin
+
 path.append(getcwd())
-print path
-"""
-#test descriptor
-def requireConnection(func):
-    def nfunc(self,*a,**b):
-        if self.conn:
-            return func(self,*a,**b)
-        else:
-            raise Exception("IRC Connection has not been defined yet!")
-    return nfunc
-"""
+
+
+
+
+class Core:
+    _PluginManager = None
+    _PluginDispatcher = None
+    _ResponseObject = None
+    _Connector = None
+    _Config = None
+    def _LoadConnector(self):
+        if not self._Config: return None
+        ConName = self._Config["Core","Connector"]
+        con = __import__("Connectors.%s"%ConName, globals(), locals(), ConName)
+        cls = getattr(con,ConName,None)
+        if cls:
+            return cls()
+        return cls
+
+
+    def HandleEvent(self,event):
+        pm = self._PluginManager
+        if not pm: return #log a message here?
+        
+        pd = self._PluginDispatcher
+        if not pd: return #log a message here?
+
+        ro = self._ResponseObject
+        if not ro: pass #log  message here?
+        
+        matches = pm.GetMatchingFunctions(event)
+        for func,inst in matches:
+            newEvent = dictJoin(event,{"self":inst,"response":ro}) 
+            #service additions would be here
+            pd.enqueue(func,newEvent)
+    
+    def __init__(self):
+        self._Config = ConfigFile("Core")
+        if not self._Config: return # log a message here?
+        self._PluginManager = PluginManager()
+        self._PluginDispatcher = PluginDispatcher()
+        self._Connector = self._LoadConnector()
+        
+        if self._Connector:
+            self._Connector.SetEventHandler(self.HandleEvent)
+            self._ResponseObject = self._Connector.GetResponseObject()
+            self._PluginDispatcher.SetResponseHandler(self._Connector.HandleResponse)
+            
+    def Start(self):
+        cf = ConfigFile("Autoload")
+        if cf:
+            names = cf["Plugins","Names"]
+            if names:
+                for name in names.split():
+                    self._PluginManager.LoadPlugin(name)
+            names = cf["Services","Names"]
+            if names:
+                for name in names.split():
+                    self._PluginManager.LoadService(name)
+
+        if self._Connector:
+            self._Connector.Start()
+        #else log error?
+
+    def Stop(self):
+        if self._PluginDispatcher: self._PluginDispatcher.Stop()
+        if self._PluginManager: self._PluginManager.Stop()
+        if self._Connector: self._Connector.Stop()
+
+if __name__=="__main__":
+    c = Core()
+    c.Start()
+    c.Stop()
+
+
+
 
 
 class Bot:
-    def __init__(self):
-        self.conn = None
-        self.setPluginManager(PluginManager())
-        self.setResponseManager(ResponseManager())
-
-    def setPluginManager(self,pm):
-        self.pluginManager = pm
-
-    def setResponseManager(self,rm):
-        self.responseManager=rm
-        self.pluginQueue = PluginQueue(rm.addResponse)
-    def setConnector(self, c):
-        if Connector.providedBy(c):
-            self.conn = c
-            self.outbound = c.getEvents()
-            c.setEventCallback(self.handleEvent)
-            self.responseManager.setOutputHandler(c.pushEvent)
-            return True
-        return False
-
 
     def matchHook(self,eventD, hookD):
         args = {}
@@ -73,21 +120,3 @@ class Bot:
                     self.pluginQueue.enqueueFunc(func,args)
                     
 
-    def start(self):
-        self.conn.connect()
-
-    def stop(self):
-        print "Stopping"
-        self.pluginQueue.stop()
-b = Bot()
-
-#hardcoded this should come from the config
-from Connectors.IRCConnector import IRCConnector
-ic = IRCConnector()
-ic.configure(host="ssh.udderweb.com", port = 6667, nick="testbot")
-b.setConnector(ic)
-b.pluginManager.addSearchPath("Plugins")
-b.pluginManager.loadPlugin("Test")
-b.start()
-
-b.stop()
