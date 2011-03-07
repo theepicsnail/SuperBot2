@@ -119,3 +119,11 @@ class PluginManager:
                     args[key+str(i)]=v
                 print "---- 3"
                 return args
+
+    def Stop(self):
+        for name,module in self.__services__:
+            print "Removing service:",name
+            del module
+        for name,module in self.__plugins__:
+            print "Removing plugin:",name
+            del module

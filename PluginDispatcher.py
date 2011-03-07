@@ -71,5 +71,5 @@ class PluginDispatcher:
     def Stop(self):
         del self.__queue__[:]
         for t in self.__workerThreads__:
-            self.enqueueFunc(None,None)
+            self.Enqueue((None,None))
             t.Stop()
