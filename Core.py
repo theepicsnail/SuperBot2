@@ -45,7 +45,9 @@ class Core:
         print matches
 
         for inst,func,args in matches:
-            newEvent = dictJoin(args,{"self":inst,"response":ro}) 
+            
+            newEvent = dictJoin(event,dictJoin(args,{"self":inst,"response":ro}))
+            
             #service additions would be here
             pd.Enqueue((func,newEvent))
     

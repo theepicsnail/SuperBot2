@@ -86,6 +86,10 @@ class PluginManager:
             
             args = self.tryMatch(func,event)
             if args:
+                print "PM: Matched function:"
+                print inst
+                print func
+                print args
                 matched+=[(inst,func,args)]
         return matched
 

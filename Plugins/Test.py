@@ -5,7 +5,7 @@ class Test:
         return response.msg(nick,message)
         
 
-    @bindFunction(command="(.*)")
+    @bindFunction(command="(.*)AAA")
     def bar(self):
         print "BAR"
 

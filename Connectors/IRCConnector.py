@@ -44,7 +44,9 @@ class IRCConnector(protocol.ClientFactory,irc.IRCClient,object):
     def HandleResponse(self,eventInfo):        
         f = getattr(self,eventInfo[0],None)
         if f:
+            print eventInfo
             f(*eventInfo[1:])
+            self.transport.doWrite()
     def SetEventHandler(self,func):
         self.EventHandler=func
     def buildProtocol(self,addr):
@@ -60,6 +62,9 @@ class IRCConnector(protocol.ClientFactory,irc.IRCClient,object):
             event["target"]=params[0]
             if len(params)==2:
                 event["message"]=params[1]
+            print "Connector is producing ->"
+            print params
+            print event
             self.EventHandler(event) 
 
 
