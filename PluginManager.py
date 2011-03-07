@@ -1,6 +1,6 @@
 import sys
 from inspect import isclass, getmembers
-
+from re import match
 from Logging import getLogger
 
 
@@ -80,6 +80,31 @@ class PluginManager:
 
 
     def GetMatchingFunctions(self,event):
+        matched = []
         for inst,func in self.__hooks__: 
-            print inst,func
-        return []
+            print inst,func.sbhook
+            
+            args = self.tryMatch(func,event)
+            if args:
+                matched+=[(inst,func,args)]
+        return matched
+
+
+    def tryMatch(self,func,eventD):
+        for hookD in func.sbhook:
+            args = {}
+            for key,pattern in hookD.items():
+                value = eventD.get(key)
+                if value == None:
+                    break # plugin wanted to match something the event didn't have 
+                
+                m = match(pattern,value)
+                if m == None:
+                    break # Didn't match
+
+                for k,v in m.groupdict().items(): #named capture groups
+                    args[k]=v
+                for i,v in enumerate(m.groups()): #unnamed
+                    args[key+str(i)]=v
+
+                return args

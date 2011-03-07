@@ -40,10 +40,14 @@ class Core:
         if not ro: pass #log  message here?
         
         matches = pm.GetMatchingFunctions(event)
-        for func,inst in matches:
-            newEvent = dictJoin(event,{"self":inst,"response":ro}) 
+
+        print "-"*80
+        print matches
+
+        for inst,func,args in matches:
+            newEvent = dictJoin(args,{"self":inst,"response":ro}) 
             #service additions would be here
-            pd.enqueue(func,newEvent)
+            pd.Enqueue((func,newEvent))
     
     def __init__(self):
         self._Config = ConfigFile("Core")

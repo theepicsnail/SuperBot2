@@ -52,9 +52,9 @@ class PluginDispatcher:
     def SetResponseHandler(self,resp):
         self.ResponseHandler = resp
 
-    def enqueueFunc(self, func, args):
+    def Enqueue(self, t):
         self.__lock__.acquire()
-        self.__queue__.append((func,args))
+        self.__queue__.append(t)
         self.__lock__.notify()
         self.__lock__.release()
 
