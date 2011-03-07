@@ -21,7 +21,7 @@ class ConfigFile:
             elif len(arg)==1:
                 return self._Config.items(*arg)
             elif len(arg)==3:
-                exp = type(arg[2])
+                exp = arg[2]
                 narg = arg[:2]
                 if exp==str:    return self._Config.get(*narg)
                 elif exp==bool: return self._Config.getboolean(*narg)
@@ -38,12 +38,13 @@ class ConfigFile:
             yield i        
 
 if __name__=="__main__":
-    cf = ConfigFile("Core")
+    cf = ConfigFile("Foo")
     for section in cf:
         print section
         for item in cf[section]:
             print item
-
-
+    print cf["Section1","arg2",int]
+    print cf["Section1","arg2",bool]
+    print cf["Section2","arg1",str]
 
 
