@@ -3,7 +3,7 @@ from Configuration import ConfigFile
 from zope.interface import implements
 from twisted.words.protocols import irc
 from twisted.internet import protocol,reactor
-
+import sys,traceback
 #these events get given to plugins to give back to the the ircconnector
 class IRCConnectorEvents:
 
@@ -20,7 +20,9 @@ class IRCConnectorEvents:
     def say(self, channel, message, length=None):
         return "say",channel,message, length
     def msg(self, user, message, length=None):
-        return "msg",user,message,length
+        if length:
+            return "msg",user,message,length
+        return "msg",user,message
     def notice(self,user, message):
         return "notice",user, message
     def away(self,message=""):
@@ -44,9 +46,12 @@ class IRCConnector(protocol.ClientFactory,irc.IRCClient,object):
     def HandleResponse(self,eventInfo):        
         f = getattr(self,eventInfo[0],None)
         if f:
-            print eventInfo
-            f(*eventInfo[1:])
-            self.transport.doWrite()
+            try:
+                print "Calling:",f,eventInfo[1:]
+                f(*eventInfo[1:])
+                self.transport.doWrite()
+            except:
+                traceback.print_exc(file=sys.stdout)
     def SetEventHandler(self,func):
         self.EventHandler=func
     def buildProtocol(self,addr):

@@ -22,6 +22,7 @@ except:
 
 def CreateLogger(name,level=None):
     l = logging.getLogger(name)
+    l.setLevel(DEBUG)
     if level!=None:
         l.setLevel(level)
     
@@ -38,6 +39,8 @@ class LogFile:
         self._log = CreateLogger(output)
     def debug(self,*vals, **kws):
         self.log(DEBUG,*vals,**kws)
+    def note(self,*vals, **kws):
+        self.log(INFO,*vals,**kws)
     def info(self,*vals, **kws):
         self.log(INFO,*vals,**kws)
     def warning(self,*vals, **kws):
