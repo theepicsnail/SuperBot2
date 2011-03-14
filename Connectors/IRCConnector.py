@@ -1,7 +1,5 @@
-from Interfaces import Connector
 from Configuration import ConfigFile
 from Logging import LogFile
-from zope.interface import implements
 from twisted.words.protocols import irc
 from twisted.internet import protocol,reactor
 import sys,traceback
@@ -43,7 +41,6 @@ class IRCConnectorEvents:
         return "stop"
 
 class IRCConnector(protocol.ClientFactory,irc.IRCClient,object):
-    implements(Connector)
     EventHandler = None
     reactor = None
     def HandleResponse(self,eventInfo):        
