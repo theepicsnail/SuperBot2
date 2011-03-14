@@ -81,11 +81,10 @@ class PluginManager:
         cls = getattr(plug,pname,None)
         if isclass(cls): #plugin has a self-titled class
             if not self.checkRequirements(cls):
-                print "Requirements not met!"#TODO Logger this
+                log.error("Requirements not met!")
                 return False
             self.checkPreferences(cls)
             inst = cls() 
-            
             
             #if we got here we have the requirements, get the hooks
             hookFuncs = filter(lambda x:hasattr(x[1],"sbhook"),getmembers(inst))
@@ -93,55 +92,50 @@ class PluginManager:
                 self.addHook(inst,v)
                 
         else:#No self-titled class?
-            print "No self titled class?"
+            log.error("No self titled class for plugin %s"%pname)
             pass
 
 
     def GetMatchingFunctions(self,event):
+        log.debug("Matching",event)
         matched = []
         for inst,func in self.__hooks__: 
-            print "Trying match:"
-            print inst
-            print func, func.sbhook
-            print event
             args = self.tryMatch(func,event)
-            print "Try match returned: ", args
             if args!=None:
-                print "PM: Matched function:"
-                print inst
-                print func
-                print args
                 matched+=[(inst,func,args)]
+        log.debug("Matched: %i"%len(matched))
         return matched
 
 
     def tryMatch(self,func,eventD):
+        log.debug("Trying to match",func)
         for hookD in func.sbhook:
-            print "  ",hookD
+            log.debug("Hook",hookD)
             args = {}
             for key,pattern in hookD.items():
-                print "     ",key,pattern
                 value = eventD.get(key)
                 if value == None:     
-                    print "---- 1"
                     break # plugin wanted to match something the event didn't have 
                 
                 m = match(pattern,value)
                 if m == None:
-                    print "---- 2"
                     break # Didn't match
 
                 for k,v in m.groupdict().items(): #named capture groups
                     args[k]=v
                 for i,v in enumerate(m.groups()): #unnamed
                     args[key+str(i)]=v
-                print "---- 3"
+
+                log.debug("Matched")
                 return args
+        log.debug("Not matched")
+        return None
 
     def Stop(self):
         for name,module in self.__services__:
-            print "Removing service:",name
+            log.debug("Removing service:",name)
             del module
         for name,module in self.__plugins__:
-            print "Removing plugin:",name
+            log.debug("Removing plugin:",name)
             del module
+
