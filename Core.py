@@ -1,4 +1,3 @@
-from Interfaces import Connector
 from PluginManager import PluginManager
 from PluginDispatcher import PluginDispatcher
 from Configuration import ConfigFile
