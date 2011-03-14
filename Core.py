@@ -1,5 +1,4 @@
 from Interfaces import Connector
-from ResponseManager import ResponseManager
 from PluginManager import PluginManager
 from PluginDispatcher import PluginDispatcher
 from Configuration import ConfigFile
