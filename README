@@ -16,7 +16,7 @@ echo -e "[Connection]\nserver=\nport=\nnick=\n" > IRCConnector.cfg
 cd ..
 
 #Edit Config/IRCConnector.cfg
-vim Config/IRCConnctor.cfg
+vim Config/IRCConnector.cfg
 
 #To start the bot run:
 python Core.py
