@@ -14,7 +14,7 @@ LogPath = "Logs"
 #ensure the logging path exists.
 try:
     from os import mkdir
-    mkdir(join(os.getcwd(),LogPath))
+    mkdir(join(getcwd(),LogPath))
     del mkdir
 except:
     pass
