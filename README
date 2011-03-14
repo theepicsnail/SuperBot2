@@ -1,0 +1,25 @@
+Run the following to setup a SuperBot2 instance.
+This will create a folder called "SuperBot2" wherever you run it.
+
+Note: to use the provided IRCConnector, you must have 'twisted' installed.
+For a super quick start, copy and paste everything below into a shell to get the latest
+and start running it after some basic configuration
+
+
+git clone git://github.com/theepicsnail/SuperBot2.git
+cd SuperBot2
+mkdir Config
+cd Config
+echo -e "[Plugins]\nNames=\n[Services]\nNames=\n" > Autoload.cfg
+echo -e "[Core]\nconnector=IRCConnector\n" > Core.cfg
+echo -e "[Connection]\nserver=\nport=\nnick=\n" > IRCConnector.cfg
+cd ..
+
+#Edit Config/IRCConnector.cfg
+vim Config/IRCConnctor.cfg
+
+#To start the bot run:
+python Core.py
+
+#This should appear to just hang while he's running.
+#Be warned currently the thread cleanup isn't great so if you ctrl-c or background and kill it, there will probably be hanging threads or processes.
