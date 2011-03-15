@@ -65,3 +65,4 @@ if __name__=="__main__":
         print "%s%s | %s"%(prefix,date,args)
         for m in msg.split("\t"):
             print "%s    %s"%(prefix,m)
+    print Color()
