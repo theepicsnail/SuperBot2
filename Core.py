@@ -26,8 +26,9 @@ class Core:
         con = __import__("Connectors.%s"%ConName, globals(), locals(), ConName)
         cls = getattr(con,ConName,None)
         if cls:
+            c = cls()
             log.debug("Connector constructed")
-            return cls()
+            return c
 
         log.critical("No connector")
         return cls

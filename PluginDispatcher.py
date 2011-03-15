@@ -14,10 +14,10 @@ class PluginDispatcherWorkerThread(threading.Thread):
         pdwtLog.debug("Worker thread started.")
         while True:
             while self.produce==None or self.consume==None:
-                pdwtLog.debug("Waiting on producer and consumer",self.produce, self.consume)
+                pdwtLog.debug("Waiting on producer and consumer","P:"+str(self.produce), "C:"+str(self.consume))
                 sleep(1)
                 if self.produce and self.consume:
-                    pdwtLog.debug("Producer and consumer set.",self.produce,self.consume)
+                    pdwtLog.debug("Producer and consumer set.","P:"+str(self.produce),"C:"+str(self.consume))
 
             func,args = self.produce()
             pdwtLog.debug("Produced",func,args)
