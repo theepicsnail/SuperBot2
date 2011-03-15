@@ -48,7 +48,6 @@ class IRCConnector(protocol.ClientFactory,irc.IRCClient,object):
             log.debug("Stopping reactor")
             self.reactor.stop()
             self.transport.doWrite()
-            self.reactor.stop()
             return 
         f = getattr(self,eventInfo[0],None)
         if f:
