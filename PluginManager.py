@@ -2,7 +2,7 @@ import sys
 from inspect import isclass, getmembers
 from re import match
 from Logging import LogFile
-
+from Configuration import ConfigFile
 
 log = LogFile("PluginManager")
 
@@ -13,17 +13,10 @@ class PluginManager:
 
     AutoLoadDeps = False
     
-    def hasService(self,serv):
-        log.debug("hasService %s",serv)
-        return self.__services__.has_key(serv)
     
     def hasPlugin(self,plug):
-        log.debug("hasPlugin %s",plug)
+        log.debug("hasPlugin %s"%plug)
         return self.__plugins__.has_key(plug)
-    
-    def LoadService(self,serv):
-        log.error("Unimplemented")
-        return False
     
     def checkRequirements(self,cls):
         log.debug("Check requirements",cls)
@@ -33,17 +26,19 @@ class PluginManager:
             log.debug("No requirements.")
             return True
        
-        for s in req:
-            if not self.hasService(s):#a dep is missing!
-                log.warning("Missing requirement",s)
-                if not self.AutoLoadDeps:
-                    #and we don't load them automatically
-                    log.error("Autoload not enabled, failing")
-                    return False
-                if not self.loadService(s):
+        for r in req: 
+            for s in r:
+                if self.__services__.has_key(s):
+                    continue
+                serv =self.loadService(s)
+                if not serv:
                     #we tried and it failed to load!
                     log.error("Loading service failed. failing")
                     return False
+                sbservs = getattr(cls,"sbservs",[])
+                sbservs.append(serv)
+                cls.sbservs=sbservs
+                log.debug("Service autoloaded")
 
         log.debug("Requirements met.")
         return True
@@ -61,7 +56,11 @@ class PluginManager:
             if not self.hasService(s):
                 log.debug("Missing preference",s)
                 if self.AutoLoadDeps:
-                    if self.loadService(s):
+                    serv = self.loadService(s)
+                    if serv:
+                        sbservs = getattr(cls,"sbservs",[])
+                        sbservs.append(serv)
+                        cls.sbservs=sbservs
                         log.debug("Service autoloaded")
                     else:
                         log.debug("Loading service failed. skipping")
@@ -69,14 +68,39 @@ class PluginManager:
                     log.debug("Autoload not enabled, skipping")
         
     
+    def LoadHooks(self,inst):
+        hookFuncs = filter(lambda x:hasattr(x[1],"sbhook"),getmembers(inst))
+        for k,v in hookFuncs:
+            self.addHook(inst,v)
+        
     def addHook(self, inst, func):
         log.debug("Adding hook",inst,func)
         hookArgs = func.sbhook
         self.__hooks__.append((inst,func))
         
 
+    def loadService(self,pname):
+        log.debug("Loading service %s"%pname)
+        serv = __import__("Services.%s"%pname,globals(),locals(),pname)
+        cls = getattr(serv,pname,None)
+        if isclass(cls): #plugin has a self-titled class
+            inst = cls() 
+            self.__services__[pname]=inst
+            log.debug("Service loaded")
+            """
+            for i in inst.Plugins:
+                if not self.LoadPlugin(i):
+                    log.error("Failed to load plugin while loading service",inst,i)
+                    return False    """#"""
+
+            self.LoadHooks(inst)
+            return inst
+        else:#No self-titled class?
+            log.error("No self titled class for service %s"%pname)
+        return False
 
     def LoadPlugin(self,pname):
+        log.debug("Loading plugin %s"%pname)
         plug = __import__("Plugins.%s"%pname,globals(),locals(),pname)
         cls = getattr(plug,pname,None)
         if isclass(cls): #plugin has a self-titled class
@@ -87,14 +111,16 @@ class PluginManager:
             inst = cls() 
             
             #if we got here we have the requirements, get the hooks
-            hookFuncs = filter(lambda x:hasattr(x[1],"sbhook"),getmembers(inst))
-            for k,v in hookFuncs:
-                self.addHook(inst,v)
-                
+            self.LoadHooks(inst)
+            return inst
         else:#No self-titled class?
             log.error("No self titled class for plugin %s"%pname)
-            pass
+            return False
 
+    def GetServices(self,inst):
+        slist = getattr(inst,"sbservs",[])
+        log.debug("Get services",inst,slist)
+        return slist
 
     def GetMatchingFunctions(self,event):
         log.debug("Matching",event)
@@ -112,30 +138,49 @@ class PluginManager:
         for hookD in func.sbhook:
             log.debug("Hook",hookD)
             args = {}
+            matched = True
             for key,pattern in hookD.items():
                 value = eventD.get(key)
                 if value == None:     
+                    matched= False
                     break # plugin wanted to match something the event didn't have 
                 
                 m = match(pattern,value)
                 if m == None:
+                    matched = False
                     break # Didn't match
 
                 for k,v in m.groupdict().items(): #named capture groups
                     args[k]=v
                 for i,v in enumerate(m.groups()): #unnamed
                     args[key+str(i)]=v
-
-                log.debug("Matched")
-                return args
+            if matched:
+               log.debug("Matched",args)
+               return args
+            
         log.debug("Not matched")
         return None
 
+    def AutoLoad(self):        
+        log.debug("Starting autoload")
+        cf = ConfigFile("Autoload")
+        if cf:
+            log.debug("Autoloading plugins and services.")
+
+            names = cf["Plugins","Names"]
+            log.debug("Autoloading plugins",names)
+            if names:
+                for name in names.split():
+                    self.LoadPlugin(name)
+        else:
+            log.note("No Autoload configuration")
+
+
     def Stop(self):
-        for name,module in self.__services__:
+        for name,module in self.__services__.values():
             log.debug("Removing service:",name)
             del module
-        for name,module in self.__plugins__:
+        for name,module in self.__plugins__.values():
             log.debug("Removing plugin:",name)
             del module
 

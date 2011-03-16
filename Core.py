@@ -58,7 +58,14 @@ class Core:
         
         for inst,func,args in matches:
             newEvent = dictJoin(event,dictJoin(args,{"self":inst,"response":ro}))
-            #service additions would be here
+            log.debug("Getting services for:",inst)
+            servs = pm.GetServices(inst)
+            log.debug("Services found for plugin:",servs)
+            for serv in servs:
+                print "-"*10
+                print newEvent
+                serv.onEvent(newEvent)
+                print newEvent
             pd.Enqueue((func,newEvent))
     
     def __init__(self):
@@ -78,24 +85,9 @@ class Core:
             
     def Start(self):
         log.debug("Starting")
-        cf = ConfigFile("Autoload")
-        if cf:
-            log.debug("Autoloading plugins and services.")
-
-            names = cf["Plugins","Names"]
-            log.debug("Autoloading plugins",names)
-            if names:
-                for name in names.split():
-                    self._PluginManager.LoadPlugin(name)
-
-            names = cf["Services","Names"]
-            log.debug("Autoloading services",names)
-            if names:
-                for name in names.split():
-                    self._PluginManager.LoadService(name)
-
-        else:
-            log.note("No Autoload configuration")
+        log.debug("Auto loading plugins")
+        self._PluginManager.AutoLoad()
+        log.debug("Auto load complete")
 
         if self._Connector:
             log.debug("Connector starting")
@@ -108,8 +100,17 @@ class Core:
         if self._PluginManager: self._PluginManager.Stop()
         if self._Connector: self._Connector.Stop()
 
+
 if __name__=="__main__":
-    c = Core()
-    c.Start()
-    c.Stop()
+    try:
+        c = Core()
+        try:
+            c.Start()
+        except Exception as e:
+            log.error(e)
+            raise
+        c.Stop()
+    except Exception as e:
+        log.error(e)
+        raise
     log.debug("End of core")
