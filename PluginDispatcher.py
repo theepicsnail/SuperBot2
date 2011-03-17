@@ -1,4 +1,5 @@
 import threading
+from types import GeneratorType
 from Util import call
 from time import sleep
 from Logging import LogFile
@@ -30,11 +31,17 @@ class PluginDispatcherWorkerThread(threading.Thread):
                 response = call(func,args)
     
                 if response and self.consume:
-                    #handle generator logic here
-                    pdwtLog.debug("Returning",response,self.consume)
-                    self.consume(response)
+                    if isinstance(response,GeneratorType):
+                        pdwtLog.debug("Generator",response)
+                        for r in response:
+                            pdwtLog.debug("Yielded",r)
+                            self.consume(r)
+                        pdwtLog.debug("End of generator",response)
+                    else:
+                        pdwtLog.debug("Returning",response)
+                        self.consume(response)
                 else:
-                    pdwtLog.debug("Not returning.",response,self.consume)
+                    pdwtLog.debug("Not returning.",response)
             except Exception as e:
                 pdwtLog.warning("Exception caught!",e)
     def Stop(self):
