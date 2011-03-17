@@ -26,7 +26,7 @@ def CreateLogger(name,level=None):
     if level!=None:
         l.setLevel(level)
     
-    handler = logging.handlers.RotatingFileHandler(join(LogPath,"%s.log"%name), maxBytes=10240, backupCount=5)
+    handler = logging.handlers.RotatingFileHandler(join(LogPath,"%s.log"%name), maxBytes=10240, backupCount=10)
     formatter = logging.Formatter("%(asctime)s|%(thread)d|%(levelno)s|%(module)s:%(funcName)s:%(lineno)d|%(message)s")
     handler.setFormatter(formatter)
     l.addHandler(handler) 
@@ -51,7 +51,6 @@ class LogFile:
         self.log(CRITICAL,*vals,**kws)
     def log(self, level, *vals, **kws):
         self._log.log(level,"\t".join(map(str,vals)))
-        pass
 
 
 if __name__=="__main__":
