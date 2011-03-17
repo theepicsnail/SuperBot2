@@ -1,3 +1,4 @@
+import inspect
 def dictJoin(src, addition):
     if src==None:
         return None
@@ -12,15 +13,7 @@ def dictJoin(src, addition):
 
 
 def call(func, args):
-     
-    reqArgs = func.func_code.co_varnames[1:]
+    reqArgs = inspect.getargspec(func).args[1:]
     passedArgs = map(args.get,reqArgs)
-    #print "----- call -----"
-#    print "  ",func
-#    print "  ",args
-#    print "  ",reqArgs
-#    print "  ",passedArgs    
     r = func(*passedArgs)
-#    print "  ",r
-#    print "----------------"
     return r
