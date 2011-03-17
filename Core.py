@@ -61,11 +61,14 @@ class Core:
             log.debug("Getting services for:",inst)
             servs = pm.GetServices(inst)
             log.debug("Services found for plugin:",servs)
+            if servs:
+                log.debug("Event before processing:",newEvent)
+
             for serv in servs:
-                print "-"*10
-                print newEvent
                 serv.onEvent(newEvent)
-                print newEvent
+            if servs:
+                log.debug("Event after processing:",newEvent)
+            #issue 5 fix goes here
             pd.Enqueue((func,newEvent))
     
     def __init__(self):
