@@ -17,6 +17,9 @@ class PluginDispatcherWorkerThread(threading.Thread):
             while self.produce==None or self.consume==None:
                 pdwtLog.debug("Waiting on producer and consumer","P:"+str(self.produce), "C:"+str(self.consume))
                 sleep(1)
+                if not self.running:
+                    pdwtLog.debug("Shutting down")
+                    return
                 if self.produce and self.consume:
                     pdwtLog.debug("Producer and consumer set.","P:"+str(self.produce),"C:"+str(self.consume))
 
