@@ -1,11 +1,19 @@
 #!/usr/bin/python
 import os.path, os, ConfigParser 
+import inspect
 
 class ConfigFile:
     _Valid = False
     _Config = None
-    def __init__(self,name):
-        path=os.path.join(os.getcwd(),"Config",name+".cfg")
+    def __init__(self,*parts):
+        #get the parent's directory
+        stk = inspect.stack()
+        path = stk[1][0].f_code.co_filename
+        base = os.path.sep.join(path.split(os.path.sep)[:-1])
+        #join it with the provided parts
+        path = os.path.join(base,*parts)+".cfg"
+        
+        
         config = ConfigParser.ConfigParser()
         if not config.read(path): return; # log an error?
 
@@ -36,7 +44,7 @@ class ConfigFile:
     def __iter__(self):
         if not self._Valid: return
         for i in self._Config.sections():
-            yield i        
+            yield i
 
 if __name__=="__main__":
     cf = ConfigFile("Foo")
