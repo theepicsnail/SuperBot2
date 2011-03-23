@@ -23,6 +23,9 @@ class Core:
             log.critical("No Config file")
             return None
         ConName = self._Config["Core","Connector"]
+        if ConName == None:
+            log.critical("No Core:Connector in Core.cfg")
+            return None
         con = __import__("Connectors.%s"%ConName, globals(), locals(), ConName)
         cls = getattr(con,ConName,None)
         if cls:
@@ -76,17 +79,21 @@ class Core:
         if not self._Config: 
             log.critical("No log file loaded!")
             return
-
-        self._PluginManager = PluginManager()
-        self._PluginDispatcher = PluginDispatcher()
-        self._Connector = self._LoadConnector()
         
         if self._Connector:
             self._Connector.SetEventHandler(self.HandleEvent)
             self._ResponseObject = self._Connector.GetResponseObject()
             self._PluginDispatcher.SetResponseHandler(self._Connector.HandleResponse)
             
+            self._PluginManager = PluginManager()
+            self._PluginDispatcher = PluginDispatcher()
+            self._Connector = self._LoadConnector()
+                
     def Start(self):
+        if not self._Connector:
+            log.warning("Could not start, no connector.")
+            return
+
         log.debug("Starting")
         log.debug("Auto loading plugins")
         self._PluginManager.AutoLoad()
@@ -110,10 +117,8 @@ if __name__=="__main__":
         try:
             c.Start()
         except Exception as e:
-            log.error(e)
-            raise
+            log.error("Exception while starting.",e)
         c.Stop()
     except Exception as e:
-        log.error(e)
-        raise
+        log.error("Exception while stopping.",e)
     log.debug("End of core")
