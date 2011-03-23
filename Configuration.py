@@ -23,24 +23,27 @@ class ConfigFile:
  
     def __getitem__(self,arg):
         if not self._Valid: return None
-        if type(arg)==tuple:
-            if len(arg)==2:
-                return self._Config.get(*arg)
-            elif len(arg)==1:
-                return self._Config.items(*arg)
-            elif len(arg)==3:
-                exp = arg[2]
-                narg = arg[:2]
-                if exp==str:    return self._Config.get(*narg)
-                elif exp==bool: return self._Config.getboolean(*narg)
-                elif exp==int:  return self._Config.getint(*narg)
-                elif exp==float:return self._Config.getfloat(*narg)
-                else: 
-                     return exp(self._Config.get(*narg))
-        elif type(arg)==str:
-            return self._Config.items(arg)
-        else: 
-            return None # log error
+        try:
+            if type(arg)==tuple:
+                if len(arg)==2:
+                    return self._Config.get(*arg)
+                elif len(arg)==1:
+                    return self._Config.items(*arg)
+                elif len(arg)==3:
+                    exp = arg[2]
+                    narg = arg[:2]
+                    if exp==str:    return self._Config.get(*narg)
+                    elif exp==bool: return self._Config.getboolean(*narg)
+                    elif exp==int:  return self._Config.getint(*narg)
+                    elif exp==float:return self._Config.getfloat(*narg)
+                    else: 
+                         return exp(self._Config.get(*narg))
+            elif type(arg)==str:
+                return self._Config.items(arg)
+            else: 
+                return None # log error
+        except:
+            return None
     def __iter__(self):
         if not self._Valid: return
         for i in self._Config.sections():
