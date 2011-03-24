@@ -13,7 +13,9 @@ class PluginManager:
 
     AutoLoadDeps = False
     
-    
+    def __init__(self,providerPath):
+        self.root = providerPath    
+
     def hasPlugin(self,plug):
         log.debug("hasPlugin %s"%plug)
         return self.__plugins__.has_key(plug)
@@ -80,8 +82,8 @@ class PluginManager:
         
 
     def loadService(self,pname):
-        log.debug("Loading service %s"%pname)
-        serv = __import__("Services.%s"%pname,globals(),locals(),pname)
+        log.debug("Loading service %s.Services.%s"%(self.root,pname))
+        serv = __import__("%s.Services.%s"%(self.root,pname),globals(),locals(),pname)
         cls = getattr(serv,pname,None)
         if isclass(cls): #plugin has a self-titled class
             inst = cls() 
@@ -100,8 +102,8 @@ class PluginManager:
         return False
 
     def LoadPlugin(self,pname):
-        log.debug("Loading plugin %s"%pname)
-        plug = __import__("Plugins.%s"%pname,globals(),locals(),pname)
+        log.debug("Loading plugin %s.Plugins.%s"%(self.root,pname))
+        plug = __import__("%s.Plugins.%s"%(self.root,pname),globals(),locals(),pname)
         cls = getattr(plug,pname,None)
         if isclass(cls): #plugin has a self-titled class
             if not self.checkRequirements(cls):
@@ -134,9 +136,7 @@ class PluginManager:
 
 
     def tryMatch(self,func,eventD):
-        log.debug("Trying to match",func)
         for hookD in func.sbhook:
-            log.debug("Hook",hookD)
             args = {}
             matched = True
             for key,pattern in hookD.items():
@@ -155,15 +155,14 @@ class PluginManager:
                 for i,v in enumerate(m.groups()): #unnamed
                     args[key+str(i)]=v
             if matched:
-               log.debug("Matched",args)
                return args
             
-        log.debug("Not matched")
         return None
 
     def AutoLoad(self):        
-        log.debug("Starting autoload")
-        cf = ConfigFile("Autoload")
+        log.debug("Starting autoload", "Root:"+self.root)
+        cf = ConfigFile(self.root,"Autoload")
+        log.debug("Configuration:","val:"+str(cf))
         if cf:
             log.debug("Autoloading plugins and services.")
 
@@ -173,7 +172,7 @@ class PluginManager:
                 for name in names.split():
                     self.LoadPlugin(name)
         else:
-            log.note("No Autoload configuration")
+            note.note("No Autoload configuration file")
 
 
     def Stop(self):
