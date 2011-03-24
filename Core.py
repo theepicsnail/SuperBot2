@@ -22,12 +22,18 @@ class Core:
         if not self._Config: 
             log.critical("No Config file")
             return None
-        ConName = self._Config["Core","Connector"]
+        ConName = self._Config["Core","Provider"]
         if ConName == None:
-            log.critical("No Core:Connector in Core.cfg")
+            log.critical("No Core:Provider in Core.cfg")
             return None
-        con = __import__("Connectors.%s"%ConName, globals(), locals(), ConName)
-        cls = getattr(con,ConName,None)
+        try:
+            con = __import__("%s.Connector"%ConName, globals(), locals(), "Connector")
+            log.debug("Got connector:",con)
+            cls = getattr(con,"Connector",None)
+        except Exception as e:
+            log.error("Exception while loading connector",e)
+            cls = None
+        log.debug("Connectors class",cls)
         if cls:
             c = cls()
             log.debug("Connector constructed")
@@ -79,15 +85,14 @@ class Core:
         if not self._Config: 
             log.critical("No log file loaded!")
             return
-        
+        self._Connector=self._LoadConnector() 
         if self._Connector:
+            self._PluginManager = PluginManager()
+            self._PluginDispatcher = PluginDispatcher()
             self._Connector.SetEventHandler(self.HandleEvent)
             self._ResponseObject = self._Connector.GetResponseObject()
             self._PluginDispatcher.SetResponseHandler(self._Connector.HandleResponse)
             
-            self._PluginManager = PluginManager()
-            self._PluginDispatcher = PluginDispatcher()
-            self._Connector = self._LoadConnector()
                 
     def Start(self):
         if not self._Connector:
