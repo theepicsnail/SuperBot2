@@ -78,6 +78,17 @@ class LogFile:
         self.log(ERROR,*vals,**kws)
     def critical(self,*vals, **kws):
         self.log(CRITICAL,*vals,**kws)
+    def exception(self,*vals):
+        lines = list(vals)
+        class appender():
+            def write(self,line):
+                lines.append(line[:-1])
+        import sys,traceback
+        tb = sys.exc_info()[2]
+        traceback.print_tb(tb,file=appender())
+        
+        self.log(ERROR,*lines)
+        
     def log(self, level, *vals, **kws):
         self._log.log(level,"\t".join(map(str,vals)))
 
@@ -92,6 +103,14 @@ if __name__=="__main__":
                 time.sleep(random.random()*.1)
                 if self.log:
                     self.foo()
+            self.log.debug("Exception time!")
+            try:
+                self.bar()
+            except:
+                self.log.exception("Exception while doing math!")
+        def bar(self):
+                i = 1/0
+            
         def foo(self):
             self.log.warning(i,"abc","123")
     logger = LogFile("test")
