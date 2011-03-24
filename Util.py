@@ -15,11 +15,12 @@ def dictJoin(src, addition):
 def call(func, args):
     reqArgs = inspect.getargspec(func).args[1:]
     defaults = inspect.getargspec(func).defaults
-    defArgs = reqArgs[-len(defaults):]
-    defaults = dict(zip(defArgs,defaults))
-    for key,val in defaults.items():
-        if not args.has_key(key): 
-            args[key]=val
+    if defaults:
+        defArgs = reqArgs[-len(defaults):]
+        defaults = dict(zip(defArgs,defaults))
+        for key,val in defaults.items():
+            if not args.has_key(key): 
+                args[key]=val
     passedArgs = map(args.get,reqArgs)
     r = func(*passedArgs)
     return r
@@ -29,7 +30,8 @@ if __name__=="__main__":
     class Test():
         def foo(self,a,b=123):
             print self,a,b
-    
+        def bar(self,a):
+            print self,a 
     t = Test()
     d={} 
     call(t.foo,d)#None, 123
@@ -43,3 +45,6 @@ if __name__=="__main__":
     del d["a"]
     call(t.foo,d)#None,3
 
+    call(t.bar,{})#None
+
+    call(t.bar,{"a":"a"})#a
