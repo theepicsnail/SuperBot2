@@ -1,27 +1,33 @@
 #!/usr/bin/python
 import os.path, os, ConfigParser 
 import inspect
+from Logging import LogFile
+log = LogFile("ConfigFiles")
 
 class ConfigFile:
     _Valid = False
     _Config = None
     def __init__(self,*parts):
+        log.debug("__init__",*parts)
         #get the parent's directory
         stk = inspect.stack()
         path = stk[1][0].f_code.co_filename
         base = os.path.sep.join(path.split(os.path.sep)[:-1])
         #join it with the provided parts
         path = os.path.join(base,*parts)+".cfg"
-        
+        log.debug("path",path)
         
         config = ConfigParser.ConfigParser()
-        if not config.read(path): return; # log an error?
+        if not config.read(path):
+            log.critical("Failed to load logfile:",path)
+            return
 
         
         self._Config = config
         self._Valid = True
  
     def __getitem__(self,arg):
+        log.debug("GetItem",self._Config,arg)
         if not self._Valid: return None
         try:
             if type(arg)==tuple:
@@ -45,9 +51,12 @@ class ConfigFile:
         except:
             return None
     def __iter__(self):
+        log.debug("__Iter__ started",self._Config)
         if not self._Valid: return
         for i in self._Config.sections():
+            log.debug("__Iter__ yield",self._Config,i)
             yield i
+        log.debug("__Iter__ stopped",self._Config)
 
 if __name__=="__main__":
     cf = ConfigFile("Foo")
