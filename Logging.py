@@ -8,6 +8,7 @@ from os.path import join
 from os import getcwd
 import logging, logging.handlers
 from logging import DEBUG, INFO, WARNING, ERROR, CRITICAL
+import sys,os
 from pickle import dumps
 LogPath = "Logs" 
 
@@ -18,6 +19,15 @@ try:
     del mkdir
 except:
     pass
+
+
+
+def currentframe():
+    """Return the frame object for the caller's stack frame."""
+    try:
+        raise Exception
+    except:
+        return sys.exc_info()[2].tb_frame.f_back
 
 
 def CreateLogger(name,level=None):
@@ -37,6 +47,25 @@ class LogFile:
     def __init__(self, output, minLevel=WARNING):
         self.minLevel = minLevel
         self._log = CreateLogger(output)
+        self._log.findCaller = self.findCaller
+    def findCaller(self):
+        """
+        Find the stack frame of the caller so that we can note the source
+        file name, line number and function name.
+        """
+        f = currentframe()
+        if f is not None:
+            f = f.f_back
+        rv = "(unknown file)", 0, "(unknown function)"
+        i=5
+        while hasattr(f, "f_code") and i >0:
+            i=i-1
+            co = f.f_code
+            rv = (co.co_filename, f.f_lineno, co.co_name)
+            f = f.f_back
+        return rv
+ 
+
     def debug(self,*vals, **kws):
         self.log(DEBUG,*vals,**kws)
     def note(self,*vals, **kws):
@@ -49,6 +78,17 @@ class LogFile:
         self.log(ERROR,*vals,**kws)
     def critical(self,*vals, **kws):
         self.log(CRITICAL,*vals,**kws)
+    def exception(self,*vals):
+        lines = list(vals)
+        class appender():
+            def write(self,line):
+                lines.append(line[:-1])
+        import sys,traceback
+        tb = sys.exc_info()[2]
+        traceback.print_tb(tb,file=appender())
+        
+        self.log(ERROR,*lines)
+        
     def log(self, level, *vals, **kws):
         self._log.log(level,"\t".join(map(str,vals)))
 
@@ -62,7 +102,17 @@ if __name__=="__main__":
             for i in range(20):
                 time.sleep(random.random()*.1)
                 if self.log:
-                    self.log.warning(i,"abc","123")
+                    self.foo()
+            self.log.debug("Exception time!")
+            try:
+                self.bar()
+            except:
+                self.log.exception("Exception while doing math!")
+        def bar(self):
+                i = 1/0
+            
+        def foo(self):
+            self.log.warning(i,"abc","123")
     logger = LogFile("test")
     for i in range(20):
         w = Worker()
