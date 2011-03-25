@@ -22,9 +22,18 @@ class Core:
         if not self._Config: 
             log.critical("No Config file")
             return None
-        ConName = self._Config["Core","Connector"]
-        con = __import__("Connectors.%s"%ConName, globals(), locals(), ConName)
-        cls = getattr(con,ConName,None)
+        ConName = self._Config["Core","Provider"]
+        if ConName == None:
+            log.critical("No Core:Provider in Core.cfg")
+            return None
+        try:
+            con = __import__("%s.Connector"%ConName, globals(), locals(), "Connector")
+            log.debug("Got connector:",con)
+            cls = getattr(con,"Connector",None)
+        except Exception as e:
+            log.error("Exception while loading connector",e)
+            cls = None
+        log.debug("Connectors class",cls)
         if cls:
             c = cls()
             log.debug("Connector constructed")
@@ -76,17 +85,20 @@ class Core:
         if not self._Config: 
             log.critical("No log file loaded!")
             return
-
-        self._PluginManager = PluginManager()
-        self._PluginDispatcher = PluginDispatcher()
-        self._Connector = self._LoadConnector()
-        
+        self._Connector=self._LoadConnector() 
         if self._Connector:
+            self._PluginManager = PluginManager()
+            self._PluginDispatcher = PluginDispatcher()
             self._Connector.SetEventHandler(self.HandleEvent)
             self._ResponseObject = self._Connector.GetResponseObject()
             self._PluginDispatcher.SetResponseHandler(self._Connector.HandleResponse)
             
+                
     def Start(self):
+        if not self._Connector:
+            log.warning("Could not start, no connector.")
+            return
+
         log.debug("Starting")
         log.debug("Auto loading plugins")
         self._PluginManager.AutoLoad()
@@ -110,10 +122,8 @@ if __name__=="__main__":
         try:
             c.Start()
         except Exception as e:
-            log.error(e)
-            raise
+            log.error("Exception while starting.",e)
         c.Stop()
     except Exception as e:
-        log.error(e)
-        raise
+        log.error("Exception while stopping.",e)
     log.debug("End of core")
