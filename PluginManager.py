@@ -155,8 +155,7 @@ class PluginManager:
                 for i,v in enumerate(m.groups()): #unnamed
                     args[key+str(i)]=v
             if matched:
-               return args
-            
+               return args    
         return None
 
     def AutoLoad(self):        
@@ -176,10 +175,13 @@ class PluginManager:
 
 
     def Stop(self):
-        for name,module in self.__services__.values():
-            log.debug("Removing service:",name)
-            del module
-        for name,module in self.__plugins__.values():
+        if self.__services__:
+            log.debug("Deleting services:",self.__services__)
+            for name,module in self.__services__.items():
+                log.debug("Removing service:",name)
+                del module
+
+        for name,module in self.__plugins__.items():
             log.debug("Removing plugin:",name)
             del module
 
