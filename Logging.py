@@ -78,15 +78,22 @@ class LogFile:
         self.log(ERROR,*vals,**kws)
     def critical(self,*vals, **kws):
         self.log(CRITICAL,*vals,**kws)
+
+    def dict(self,d):
+        if d:
+            lines = [lambda x,y:x+"\t"+y,d.items()]
+        else:   
+            lines = ["None"]
+
+        self.log(DEBUG,*lines)
+    
     def exception(self,*vals):
         lines = list(vals)
-        class appender():
-            def write(self,line):
-                lines.append(line[:-1])
         import sys,traceback
-        tb = sys.exc_info()[2]
-        traceback.print_tb(tb,file=appender())
-        
+        tb = sys.exc_info()
+        tbLines=(traceback.format_exception(*tb))
+        for l in tbLines:
+            lines += l[:-1].split("\n")
         self.log(ERROR,*lines)
         
     def log(self, level, *vals, **kws):
