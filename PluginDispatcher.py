@@ -45,8 +45,8 @@ class PluginDispatcherWorkerThread(threading.Thread):
                         self.consume(response)
                 else:
                     pdwtLog.debug("Not returning.",response)
-            except Exception as e:
-                pdwtLog.warning("Exception caught!",e)
+            except:
+                pdwtLog.exception("Exception while evaluating plugin!")
     def Stop(self):
         pdwtLog.debug("Set stop flag")
         self.running = False
