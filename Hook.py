@@ -14,7 +14,7 @@ def prefers(*plugins):
     def newClass(cls):
         prefs = getattr(cls, "sbpref",[])
         prefs.append(plugins)
-        cld.sbpref = prefs
+        cls.sbpref = prefs
         return cls
     return newClass
 

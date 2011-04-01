@@ -22,8 +22,8 @@ class Core:
             con = __import__("%s.Connector"%ConName, globals(), locals(), "Connector")
             log.debug("Got connector:",con)
             cls = getattr(con,"Connector",None)
-        except Exception as e:
-            log.error("Exception while loading connector",e)
+        except:
+            log.exception("Exception while loading connector")
             cls = None
         log.debug("Connectors class",cls)
         if cls:
@@ -67,6 +67,7 @@ class Core:
                 log.debug("Event before processing:",newEvent)
 
             for serv in servs:
+                log.debug("Processing service",serv)
                 serv.onEvent(newEvent)
             if servs:
                 log.debug("Event after processing:",newEvent)
