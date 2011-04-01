@@ -19,7 +19,7 @@ class PluginManager:
 
     def hasPlugin(self, plug):
         log.debug("hasPlugin %s" % plug)
-        return self.__plugins__ in plug
+        return(plug in self.__plugins__)
 
     def checkRequirements(self, cls):
         log.debug("Check requirements", cls)
@@ -33,7 +33,7 @@ class PluginManager:
             for s in r:
                 log.debug("Loading Requirement", s)
                 serv = None
-                if self.__services__ in s:
+                if s in self.__services__:
                     log.debug("already have service", s, self.__services__)
                     serv = self.__services__[s]
                 else:
@@ -62,7 +62,7 @@ class PluginManager:
 
         for p in pref:
             for s in p:
-                if not self.__services__ in s:
+                if not s in self.__services__:
                     log.debug("Missing preference", s)
                     if self.AutoLoadDeps:
                         serv = self.loadService(s)
