@@ -11,21 +11,24 @@ path.append(getcwd())
 
 log = LogFile("Core")
 
+
 class Core:
     _PluginManager = None
     _PluginDispatcher = None
     _ResponseObject = None
     _Connector = None
     _Config = None
-    def _LoadConnector(self,ConName):
+
+    def _LoadConnector(self, ConName):
         try:
-            con = __import__("%s.Connector"%ConName, globals(), locals(), "Connector")
-            log.debug("Got connector:",con)
-            cls = getattr(con,"Connector",None)
+            con = __import__("%s.Connector" % ConName,
+                    globals(), locals(), "Connector")
+            log.debug("Got connector:", con)
+            cls = getattr(con, "Connector", None)
         except Exception as e:
-            log.error("Exception while loading connector",e)
+            log.error("Exception while loading connector", e)
             cls = None
-        log.debug("Connectors class",cls)
+        log.debug("Connectors class", cls)
         if cls:
             c = cls()
             log.debug("Connector constructed")
@@ -34,64 +37,63 @@ class Core:
         log.critical("No connector")
         return cls
 
-
-    def HandleEvent(self,event):
+    def HandleEvent(self, event):
         log.debug("HandleEvent")
         log.dict(event)
 
         pm = self._PluginManager
-        if not pm: 
+        if not pm:
             log.warning("No plugin manager")
             return
-        
+
         pd = self._PluginDispatcher
         if not pd:
-            log.warning("No plugin dispatcher") 
+            log.warning("No plugin dispatcher")
             return
 
         ro = self._ResponseObject
         if not ro:
             log.warning("no response object")
             pass
-        
-        
+
         matches = pm.GetMatchingFunctions(event)
-        log.debug("Matched %i hook(s)."%len(matches))
-        
-        for inst,func,args in matches:
-            newEvent = dictJoin(event,dictJoin(args,{"self":inst,"response":ro}))
-            log.debug("Getting services for:",inst)
+        log.debug("Matched %i hook(s)." % len(matches))
+
+        for inst, func, args in matches:
+            newEvent = dictJoin(event, dictJoin(args,
+                {"self": inst, "response": ro}))
+            log.debug("Getting services for:", inst)
             servs = pm.GetServices(inst)
-            log.debug("Services found for plugin:",servs)
+            log.debug("Services found for plugin:", servs)
             if servs:
-                log.debug("Event before processing:",newEvent)
+                log.debug("Event before processing:", newEvent)
 
             for serv in servs:
                 serv.onEvent(newEvent)
             if servs:
-                log.debug("Event after processing:",newEvent)
+                log.debug("Event after processing:", newEvent)
             #issue 5 fix goes here
-            pd.Enqueue((func,newEvent))
-    
+            pd.Enqueue((func, newEvent))
+
     def __init__(self):
         self._Config = ConfigFile("Core")
-        if not self._Config: 
+        if not self._Config:
             log.critical("No log file loaded!")
             return
-        ConName = self._Config["Core","Provider"]
+        ConName = self._Config["Core", "Provider"]
         if ConName == None:
             log.critical("No Core:Provider in Core.cfg")
             del self._Connector
-            return 
-            
-        self._Connector=self._LoadConnector(ConName) 
+            return
+
+        self._Connector = self._LoadConnector(ConName)
         self._PluginManager = PluginManager(ConName)
         self._PluginDispatcher = PluginDispatcher()
         self._Connector.SetEventHandler(self.HandleEvent)
         self._ResponseObject = self._Connector.GetResponseObject()
-        self._PluginDispatcher.SetResponseHandler(self._Connector.HandleResponse)
-            
-                
+        self._PluginDispatcher.SetResponseHandler(
+                self._Connector.HandleResponse)
+
     def Start(self):
         if not self._Connector:
             log.warning("Could not start, no connector.")
@@ -109,12 +111,15 @@ class Core:
 
     def Stop(self):
         log.debug("Stopping")
-        if self._PluginDispatcher: self._PluginDispatcher.Stop()
-        if self._PluginManager: self._PluginManager.Stop()
-        if self._Connector: self._Connector.Stop()
+        if self._PluginDispatcher:
+            self._PluginDispatcher.Stop()
+        if self._PluginManager:
+            self._PluginManager.Stop()
+        if self._Connector:
+            self._Connector.Stop()
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     try:
         c = Core()
         try:
