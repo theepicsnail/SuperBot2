@@ -11,7 +11,7 @@ class PluginManager:
     __plugins__={}
     __hooks__=[] # list of (function, pluginname, functionname)
 
-    AutoLoadDeps = False
+    AutoLoadDeps = True
     
     def __init__(self,providerPath):
         self.root = providerPath    
@@ -30,17 +30,22 @@ class PluginManager:
        
         for r in req: 
             for s in r:
+                log.debug("Loading Requirement",s)
+                serv = None
                 if self.__services__.has_key(s):
-                    continue
-                serv =self.loadService(s)
-                if not serv:
-                    #we tried and it failed to load!
-                    log.error("Loading service failed. failing")
-                    return False
+                    log.debug("already have service",s,self.__services__)
+                    serv = self.__services__[s]
+                else:
+                    log.debug("Loading service",s)
+                    serv =self.loadService(s)
+                    if not serv:
+                        #we tried and it failed to load!
+                        log.error("Loading service failed. failing")
+                        return False
                 sbservs = getattr(cls,"sbservs",[])
                 sbservs.append(serv)
                 cls.sbservs=sbservs
-                log.debug("Service autoloaded")
+                log.debug("Service autoloaded",s)
 
         log.debug("Requirements met.")
         return True
@@ -54,20 +59,21 @@ class PluginManager:
             log.debug("No preferences.")
             return
 
-        for s in pref:
-            if not self.hasService(s):
-                log.debug("Missing preference",s)
-                if self.AutoLoadDeps:
-                    serv = self.loadService(s)
-                    if serv:
-                        sbservs = getattr(cls,"sbservs",[])
-                        sbservs.append(serv)
-                        cls.sbservs=sbservs
-                        log.debug("Service autoloaded")
+        for p in pref:
+            for s in p:
+                if not self.__services__.has_key(s):
+                    log.debug("Missing preference",s)
+                    if self.AutoLoadDeps:
+                        serv = self.loadService(s)
+                        if serv:
+                            sbservs = getattr(cls,"sbservs",[])
+                            sbservs.append(serv)
+                            cls.sbservs=sbservs
+                            log.debug("Service autoloaded",s)
+                        else:
+                            log.debug("Loading service failed. skipping")
                     else:
-                        log.debug("Loading service failed. skipping")
-                else:
-                    log.debug("Autoload not enabled, skipping")
+                        log.debug("Autoload not enabled, skipping")
         
     
     def LoadHooks(self,inst):
@@ -82,23 +88,26 @@ class PluginManager:
         
 
     def loadService(self,pname):
-        log.debug("Loading service %s.Services.%s"%(self.root,pname))
-        serv = __import__("%s.Services.%s"%(self.root,pname),globals(),locals(),pname)
-        cls = getattr(serv,pname,None)
-        if isclass(cls): #plugin has a self-titled class
-            inst = cls() 
-            self.__services__[pname]=inst
-            log.debug("Service loaded")
-            """
-            for i in inst.Plugins:
-                if not self.LoadPlugin(i):
-                    log.error("Failed to load plugin while loading service",inst,i)
-                    return False    """#"""
-
-            self.LoadHooks(inst)
-            return inst
-        else:#No self-titled class?
-            log.error("No self titled class for service %s"%pname)
+        try:
+            log.debug("Loading service %s.Services.%s"%(self.root,pname))
+            serv = __import__("%s.Services.%s"%(self.root,pname),globals(),locals(),pname)
+            cls = getattr(serv,pname,None)
+            if isclass(cls): #plugin has a self-titled class
+                inst = cls() 
+                self.__services__[pname]=inst
+                log.debug("Service loaded",pname)
+                """
+                for i in inst.Plugins:
+                    if not self.LoadPlugin(i):
+                        log.error("Failed to load plugin while loading service",inst,i)
+                        return False    """#"""
+    
+                self.LoadHooks(inst)
+                return inst
+            else:#No self-titled class?
+                log.error("No self titled class for service %s"%pname)
+        except:
+            log.exception("Exception while loading service")
         return False
 
     def LoadPlugin(self,pname):
@@ -155,8 +164,7 @@ class PluginManager:
                 for i,v in enumerate(m.groups()): #unnamed
                     args[key+str(i)]=v
             if matched:
-               return args
-            
+               return args    
         return None
 
     def AutoLoad(self):        
@@ -176,10 +184,13 @@ class PluginManager:
 
 
     def Stop(self):
-        for name,module in self.__services__.values():
-            log.debug("Removing service:",name)
-            del module
-        for name,module in self.__plugins__.values():
+        if self.__services__:
+            log.debug("Deleting services:",self.__services__)
+            for name,module in self.__services__.items():
+                log.debug("Removing service:",name)
+                del module
+
+        for name,module in self.__plugins__.items():
             log.debug("Removing plugin:",name)
             del module
 

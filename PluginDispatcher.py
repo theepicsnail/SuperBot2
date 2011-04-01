@@ -24,13 +24,15 @@ class PluginDispatcherWorkerThread(threading.Thread):
                     pdwtLog.debug("Producer and consumer set.","P:"+str(self.produce),"C:"+str(self.consume))
 
             func,args = self.produce()
-            pdwtLog.debug("Produced",func,args)
+            pdwtLog.debug("Produced",func)
+            pdwtLog.dict(args)
 
             if not self.running:
                 pdwtLog.note("Shutting down")
                 return
             try:
-                pdwtLog.debug("Calling",func,args)
+                pdwtLog.debug("Calling",func)
+                pdwtLog.dict(args)
                 response = call(func,args)
     
                 if response and self.consume:
@@ -77,7 +79,9 @@ class PluginDispatcher:
         self.__queue__=self.__queue__[1:]
         self.__lock__.release()
 
-        pdLog.debug("Dequeued",out)        
+        pdLog.debug("Dequeued")
+        pdLog.debug(out[0])
+        pdLog.dict(out[1])
         return out
     
     def SetResponseHandler(self,resp):
@@ -89,7 +93,9 @@ class PluginDispatcher:
         pdLog.debug("Complete")
 
     def Enqueue(self, t):
-        pdLog.debug("Enqueuing",t)
+        pdLog.debug("Enqueuing")
+        pdLog.debug(t[0])
+        pdLog.dict(t[1])
         self.__lock__.acquire()
         self.__queue__.append(t)
         pdLog.debug("Notifying sleeping worker threads")

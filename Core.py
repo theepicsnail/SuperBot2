@@ -36,7 +36,8 @@ class Core:
 
 
     def HandleEvent(self,event):
-        log.debug("HandleEvent",event)
+        log.debug("HandleEvent")
+        log.dict(event)
 
         pm = self._PluginManager
         if not pm: 
@@ -118,9 +119,9 @@ if __name__=="__main__":
         c = Core()
         try:
             c.Start()
-        except Exception as e:
-            log.error("Exception while starting.",e)
+        except:
+            log.exception("Exception while starting.")
         c.Stop()
-    except Exception as e:
-        log.error("Exception while stopping.",e)
+    except:
+        log.exception("Exception while stopping.")
     log.debug("End of core")
