@@ -86,12 +86,12 @@ class Core:
             return 
             
         self._Connector=self._LoadConnector(ConName) 
-        self._PluginManager = PluginManager(ConName)
-        self._PluginDispatcher = PluginDispatcher()
-        self._Connector.SetEventHandler(self.HandleEvent)
-        self._ResponseObject = self._Connector.GetResponseObject()
-        self._PluginDispatcher.SetResponseHandler(self._Connector.HandleResponse)
-            
+	if self._Connector:
+	        self._PluginManager = PluginManager(ConName)
+	        self._PluginDispatcher = PluginDispatcher()
+	        self._Connector.SetEventHandler(self.HandleEvent)
+	        self._ResponseObject = self._Connector.GetResponseObject()
+	        self._PluginDispatcher.SetResponseHandler(self._Connector.HandleResponse)    
                 
     def Start(self):
         if not self._Connector:
