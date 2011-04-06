@@ -61,20 +61,20 @@ class PluginManager:
 
         for p in pref:
             for s in p:
+                log.debug("Loading Preference",s)
+
                 if not self.__services__.has_key(s):
-                    log.debug("Missing preference",s)
-                    if self.AutoLoadDeps:
-                        serv = self.loadService(s)
-                        if serv:
-                            sbservs = getattr(cls,"sbservs",[])
-                            sbservs.append(serv)
-                            cls.sbservs=sbservs
-                            log.debug("Service autoloaded",s)
-                        else:
-                            log.debug("Loading service failed. skipping")
-                    else:
-                        log.debug("Autoload not enabled, skipping")
-        
+                    serv = self.loadService(s)
+                else:
+                    serv = self.__services__[s]
+
+                if serv:
+                    sbservs = getattr(cls,"sbservs",[])
+                    sbservs.append(serv)
+                    cls.sbservs=sbservs
+                    log.debug("Service autoloaded",s)
+                else:
+                    log.debug("Loading service failed. skipping")
     
     def LoadHooks(self,inst):
         hookFuncs = filter(lambda x:hasattr(x[1],"sbhook"),getmembers(inst))
@@ -170,7 +170,12 @@ class PluginManager:
     def AutoLoad(self):        
         log.debug("Starting autoload", "Root:"+self.root)
         cf = ConfigFile(self.root,"Autoload")
-        log.debug("Configuration:","val:"+str(cf))
+        lines = ["Configuration:"]
+        for i in cf:
+            lines.append(i)
+            for j in cf[i]:
+                lines.append("  %s=%s"%(j,cf[i,j]))
+        log.debug(*lines)
         if cf:
             log.debug("Autoloading plugins and services.")
 

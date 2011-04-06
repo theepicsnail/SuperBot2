@@ -96,10 +96,12 @@ class LogFile:
             lines += l[:-1].split("\n")
         self.log(ERROR,*lines)
         
+        global ExceptionLog
+        ExceptionLog.log(ERROR,*lines)
     def log(self, level, *vals, **kws):
         self._log.log(level,"\t".join(map(str,vals)))
 
-
+ExceptionLog = LogFile("Exceptions")
 if __name__=="__main__":
     
     import threading, time, random
