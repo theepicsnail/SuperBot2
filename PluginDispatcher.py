@@ -6,63 +6,71 @@ from Logging import LogFile
 pdLog = LogFile("PluginDispatcher")
 pdwtLog = LogFile("PluginDispatcherWorkerThread")
 
+
 class PluginDispatcherWorkerThread(threading.Thread):
     running = True
     produce = None
-    consume = None 
+    consume = None
 
     def run(self):
         pdwtLog.debug("Worker thread started.")
         while True:
-            while self.produce==None or self.consume==None:
-                pdwtLog.debug("Waiting on producer and consumer","P:"+str(self.produce), "C:"+str(self.consume))
+            while self.produce == None or self.consume == None:
+                pdwtLog.debug("Waiting on producer and consumer",
+                        "P:" + str(self.produce), "C:" + str(self.consume))
                 sleep(1)
                 if not self.running:
                     pdwtLog.debug("Shutting down")
                     return
                 if self.produce and self.consume:
-                    pdwtLog.debug("Producer and consumer set.","P:"+str(self.produce),"C:"+str(self.consume))
+                    pdwtLog.debug("Producer and consumer set.",
+                            "P:" + str(self.produce), "C:" + str(self.consume))
 
-            func,args = self.produce()
-            pdwtLog.debug("Produced",func,args)
+            func, args = self.produce()
+            pdwtLog.debug("Produced", func)
+            pdwtLog.dict(args)
 
             if not self.running:
                 pdwtLog.note("Shutting down")
                 return
             try:
-                pdwtLog.debug("Calling",func,args)
-                response = call(func,args)
-    
+                pdwtLog.debug("Calling", func)
+                pdwtLog.dict(args)
+                response = call(func, args)
+
                 if response and self.consume:
-                    if isinstance(response,GeneratorType):
-                        pdwtLog.debug("Generator",response)
+                    if isinstance(response, GeneratorType):
+                        pdwtLog.debug("Generator", response)
                         for r in response:
-                            pdwtLog.debug("Yielded",r)
+                            pdwtLog.debug("Yielded", r)
                             self.consume(r)
-                        pdwtLog.debug("End of generator",response)
+                        pdwtLog.debug("End of generator", response)
                     else:
-                        pdwtLog.debug("Returning",response)
+                        pdwtLog.debug("Returning", response)
                         self.consume(response)
                 else:
-                    pdwtLog.debug("Not returning.",response)
-            except Exception as e:
-                pdwtLog.warning("Exception caught!",e)
+                    pdwtLog.debug("Not returning.", response)
+            except:
+                pdwtLog.exception("Exception while evaluating plugin!")
+
     def Stop(self):
         pdwtLog.debug("Set stop flag")
         self.running = False
-        
+
+
 class PluginDispatcher:
-    __queue__=[]
-    __workerThreads__=[]
+    __queue__ = []
+    __workerThreads__ = []
     __lock__ = threading.Condition()
-    
-    ResponseHandler=None
+
+    ResponseHandler = None
+
     def __init__(self):
         pdLog.debug("Creating worker threads.")
         for i in xrange(5):
             worker = PluginDispatcherWorkerThread()
             worker.produce = self.Dequeue
-            self.__workerThreads__+=[worker]
+            self.__workerThreads__ += [worker]
             worker.start()
 
     def Dequeue(self):
@@ -74,22 +82,26 @@ class PluginDispatcher:
             pdLog.debug("Notified.")
 
         out = self.__queue__[0]
-        self.__queue__=self.__queue__[1:]
+        self.__queue__ = self.__queue__[1:]
         self.__lock__.release()
 
-        pdLog.debug("Dequeued",out)        
+        pdLog.debug("Dequeued")
+        pdLog.debug(out[0])
+        pdLog.dict(out[1])
         return out
-    
-    def SetResponseHandler(self,resp):
-        pdLog.debug("Response handler set to",resp)
+
+    def SetResponseHandler(self, resp):
+        pdLog.debug("Response handler set to", resp)
         self.ResponseHandler = resp
         pdLog.debug("Switching workerthreads to new response handler")
         for worker in self.__workerThreads__:
-            worker.consume=resp
+            worker.consume = resp
         pdLog.debug("Complete")
 
     def Enqueue(self, t):
-        pdLog.debug("Enqueuing",t)
+        pdLog.debug("Enqueuing")
+        pdLog.debug(t[0])
+        pdLog.dict(t[1])
         self.__lock__.acquire()
         self.__queue__.append(t)
         pdLog.debug("Notifying sleeping worker threads")
@@ -102,5 +114,4 @@ class PluginDispatcher:
         for t in self.__workerThreads__:
             t.Stop()
         for t in self.__workerThreads__:
-            self.Enqueue((None,None))
-
+            self.Enqueue((None, None))
