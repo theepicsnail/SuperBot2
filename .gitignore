@@ -1,0 +1,10 @@
+*~
+*.pyc
+*.swm
+*.swn
+*.swo
+*.swp
+.*
+*.db
+
+Logs/
