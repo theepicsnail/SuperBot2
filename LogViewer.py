@@ -51,8 +51,7 @@ def handleLog(path, num):
     r = file(path, "r")
     for line in r:
         data = line.split("|", 4)
-        head = Color(0, 0, getPIDColor(data[1])) + data[1] + Color(0, 0, num) 
-            + " | " + data[2] + " | " + data[3]
+        head = Color(0, 0, getPIDColor(data[1])) + data[1] + Color(0, 0, num) + " | " + data[2] + " | " + data[3]
 
         lines += [(data[0], getSortID(), head, data[-1][:-1], prefix)]
 
