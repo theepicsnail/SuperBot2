@@ -1,6 +1,6 @@
+#testing eclipse addition
 #TODO: put checks in , requires/prefers should accept
 #strings as the plugins and classes for cls
-
 
 def requires(*plugins):
     def newClass(cls):
