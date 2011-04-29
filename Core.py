@@ -1,6 +1,7 @@
 from PluginManager import PluginManager
 from PluginDispatcher import PluginDispatcher
 from Configuration import ConfigFile
+from Util import call
 from re import match
 from sys import path
 from os import getcwd
@@ -68,9 +69,17 @@ class Core:
             if servs:
                 log.debug("Event before processing:", newEvent)
 
+            servDict={}
+            servDict["event"]=newEvent
+            servDict["pm"]=self._PluginManager
+            servDict["pd"]=self._PluginDispatcher
+            servDict["ro"]=self._ResponseObject
+            servDict["c"]=self._Connector
+            servDict["core"]=self
+            servDict["config"]=self._Config
             for serv in servs:
                 log.debug("Processing service",serv)
-                serv.onEvent(newEvent)
+                call(serv.onEvent,servDict)
             if servs:
                 log.debug("Event after processing:", newEvent)
             #issue 5 fix goes here

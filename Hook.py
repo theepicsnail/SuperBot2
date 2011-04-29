@@ -5,7 +5,7 @@
 def requires(*plugins):
     def newClass(cls):
         reqs = getattr(cls, "sbreq", [])
-        reqs.append(plugins)
+        reqs.extend(plugins)
         cls.sbreq = reqs
         return cls
     return newClass
@@ -14,7 +14,7 @@ def requires(*plugins):
 def prefers(*plugins):
     def newClass(cls):
         prefs = getattr(cls, "sbpref", [])
-        prefs.append(plugins)
+        prefs.extend(plugins)
         cls.sbpref = prefs
         return cls
     return newClass
@@ -24,8 +24,8 @@ def prefers(*plugins):
 #and func should be a function
 def bindFunction(**args):
     def newFunc(func):  # the actual descriptor
-        attr = getattr(func, "sbhook", [])
-        attr.append(args)
-        func.sbhook = attr
+        attr = getattr(func.im_class, "hooks", [])
+        attr.append(func)
+        func.hooks=attr
         return func
     return newFunc
