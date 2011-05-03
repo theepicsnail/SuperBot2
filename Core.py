@@ -1,6 +1,7 @@
 from PluginManager import PluginManager
 from PluginDispatcher import PluginDispatcher
 from Configuration import ConfigFile
+from Util import call
 from re import match
 from sys import path
 from os import getcwd
@@ -25,8 +26,8 @@ class Core:
                     globals(), locals(), "Connector")
             log.debug("Got connector:", con)
             cls = getattr(con, "Connector", None)
-        except Exception as e:
-            log.error("Exception while loading connector", e)
+        except :
+            log.exception("Exception while loading connector")
             cls = None
         log.debug("Connectors class", cls)
         if cls:
@@ -38,8 +39,7 @@ class Core:
         return cls
 
     def HandleEvent(self, event):
-        log.debug("HandleEvent")
-        log.dict(event)
+        log.dict(event,"HandleEvent")
 
         pm = self._PluginManager
         if not pm:
@@ -59,19 +59,28 @@ class Core:
         matches = pm.GetMatchingFunctions(event)
         log.debug("Matched %i hook(s)." % len(matches))
 
-        for inst, func, args in matches:
+        for inst, func, args, servs in matches:
             newEvent = dictJoin(event, dictJoin(args,
                 {"self": inst, "response": ro}))
-            log.debug("Getting services for:", inst)
-            servs = pm.GetServices(inst)
             log.debug("Services found for plugin:", servs)
             if servs:
                 log.debug("Event before processing:", newEvent)
 
-            for serv in servs:
-                serv.onEvent(newEvent)
+            servDict={}
+            servDict["event"]=newEvent
+            servDict["pm"]=self._PluginManager
+            servDict["pd"]=self._PluginDispatcher
+            servDict["ro"]=self._ResponseObject
+            servDict["c"]=self._Connector
+            servDict["core"]=self
+            servDict["config"]=self._Config
+            for servName in servs:
+                serv = pm.GetService(servName)
+                log.debug("Processing service",servName,serv)
+                call(serv.onEvent,servDict)
+
             if servs:
-                log.debug("Event after processing:", newEvent)
+                log.dict(newEvent,"Event after processing:")
             #issue 5 fix goes here
             pd.Enqueue((func, newEvent))
 
@@ -84,14 +93,15 @@ class Core:
         if ConName == None:
             log.critical("No Core:Provider in Core.cfg")
             del self._Connector
-            return
-
-        self._Connector = self._LoadConnector(ConName)
-        self._PluginManager = PluginManager(ConName)
-        self._PluginDispatcher = PluginDispatcher()
-        self._Connector.SetEventHandler(self.HandleEvent)
-        self._ResponseObject = self._Connector.GetResponseObject()
-        self._PluginDispatcher.SetResponseHandler(
+            return 
+            
+        self._Connector=self._LoadConnector(ConName) 
+    	if self._Connector:
+            self._PluginManager = PluginManager(ConName)
+            self._PluginDispatcher = PluginDispatcher()
+            self._Connector.SetEventHandler(self.HandleEvent)
+            self._ResponseObject = self._Connector.GetResponseObject()
+            self._PluginDispatcher.SetResponseHandler(
                 self._Connector.HandleResponse)
 
     def Start(self):

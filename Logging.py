@@ -87,12 +87,13 @@ class LogFile:
     def critical(self, *vals, **kws):
         self.log(CRITICAL, *vals, **kws)
 
-    def dict(self, d):
+    def dict(self, d, *vals):
         if d:
-            lines = [lambda x, y: x + "\t" + y, d.items()]
+            lines = map(lambda (x, y): str(x) + " => " + str(y), d.items())
         else:
             lines = ["None"]
-
+        lines+=vals
+        
         self.log(DEBUG, *lines)
 
     def exception(self, *vals):
@@ -103,14 +104,17 @@ class LogFile:
         tbLines = (traceback.format_exception(*tb))
         for l in tbLines:
             lines += l[:-1].split("\n")
-        self.log(ERROR, *lines)
+        self.log(ERROR,*lines)
+        
+        global ExceptionLog
+        ExceptionLog.log(ERROR,*lines)
 
     def log(self, level, *vals, **kws):
         self._log.log(level, "\t".join(map(str, vals)))
 
 
+ExceptionLog = LogFile("Exceptions")
 if __name__ == "__main__":
-
     import threading
     import time
     import random
@@ -139,3 +143,4 @@ if __name__ == "__main__":
         w = Worker()
         w.log = logger
         w.start()
+    logger.dict({"a":"a","foo":"bar",1:[1]})

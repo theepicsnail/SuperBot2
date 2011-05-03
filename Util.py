@@ -22,7 +22,7 @@ def call(func, args):
         defArgs = reqArgs[-len(defaults):]
         defaults = dict(zip(defArgs, defaults))
         for key, val in defaults.items():
-            if not args in key:
+            if not key in args :
                 args[key] = val
     passedArgs = map(args.get, reqArgs)
     r = func(*passedArgs)
@@ -32,23 +32,31 @@ if __name__ == "__main__":
     #default parameter test
     class Test():
         def foo(self, a, b=123):
-            print self, a, b
+            print a, b
 
         def bar(self, a):
-            print self, a
+            print a
     t = Test()
     d = {}
+    print "Expected \tActual"
+    print "------------------------"
+    print "None 123 \t",
     call(t.foo, d)  # None, 123
 
     d["a"] = 2
+    print "2 123\t\t",
     call(t.foo, d)  # 2, 123
 
     d["b"] = 3
+    print "2 3\t\t",
     call(t.foo, d)  # 2, 3
 
     del d["a"]
+    print "None 3\t\t",
     call(t.foo, d)  # None, 3
 
+    print "None\t\t",
     call(t.bar, {})  # None
 
+    print "a\t\t",
     call(t.bar, {"a": "a"})  # a
