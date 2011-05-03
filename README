@@ -5,21 +5,29 @@ Note: to use the provided IRCConnector, you must have 'twisted' installed.
 For a super quick start, copy and paste everything below into a shell to get the latest
 and start running it after some basic configuration
 
-
 git clone git://github.com/theepicsnail/SuperBot2.git
 cd SuperBot2
-mkdir Config
-cd Config
-echo -e "[Plugins]\nNames=\n[Services]\nNames=\n" > Autoload.cfg
-echo -e "[Core]\nconnector=IRCConnector\n" > Core.cfg
-echo -e "[Connection]\nserver=\nport=\nnick=\n" > IRCConnector.cfg
-cd ..
-
-#Edit Config/IRCConnector.cfg
-vim Config/IRCConnector.cfg
-
-#To start the bot run:
+#You now have the base SB2 install, there's a directory for the SB2IRC submodule
+#to fill that in, run the following:
+git submodule init
+git submodule update
+#This will now have cloned SB2IRC into the (What was) empty SuperBot2IRC directory.
+#
+#Note: Core.cfg is already configured to use SB2IRC, if you were using a different
+#      provider, this is where you would put its name.
+#
+#Now we need to configure the IRC connection
+vim SuperBot2IRC/SuperBot2IRC.cfg
+#
+#
+#Now SuperBot2 should be setup, you can run it with
 python Core.py
 
-#This should appear to just hang while he's running.
-#Be warned currently the thread cleanup isn't great so if you ctrl-c or background and kill it, there will probably be hanging threads or processes.
+
+#
+# If you want to view the logs, the current way to do this is:
+#
+python LogViewer.py Logs/* | less
+#
+# To view any specific log, pass the logs name instaead of * in the line above
+#
