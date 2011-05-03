@@ -24,8 +24,8 @@ def prefers(*plugins):
 #and func should be a function
 def bindFunction(**args):
     def newFunc(func):  # the actual descriptor
-        attr = getattr(func.im_class, "hooks", [])
-        attr.append(func)
+        attr = getattr(func, "hooks", [])
+        attr.append(args)
         func.hooks=attr
         return func
     return newFunc

@@ -50,6 +50,8 @@ class PluginDispatcherWorkerThread(threading.Thread):
                         self.consume(response)
                 else:
                     pdwtLog.debug("Not returning.", response)
+            except NameError,n:
+                pdwtLog.exception("NameError while evaluating plugin!",n.message)
             except:
                 pdwtLog.exception("Exception while evaluating plugin!")
 

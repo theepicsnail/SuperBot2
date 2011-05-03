@@ -87,12 +87,13 @@ class LogFile:
     def critical(self, *vals, **kws):
         self.log(CRITICAL, *vals, **kws)
 
-    def dict(self, d):
+    def dict(self, d, *vals):
         if d:
-            lines = [lambda x, y: x + "\t" + y, d.items()]
+            lines = map(lambda (x, y): str(x) + " => " + str(y), d.items())
         else:
             lines = ["None"]
-
+        lines+=vals
+        
         self.log(DEBUG, *lines)
 
     def exception(self, *vals):
@@ -142,3 +143,4 @@ if __name__ == "__main__":
         w = Worker()
         w.log = logger
         w.start()
+    logger.dict({"a":"a","foo":"bar",1:[1]})

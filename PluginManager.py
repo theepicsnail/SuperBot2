@@ -3,38 +3,59 @@ from inspect import isclass, getmembers
 from re import match
 from Logging import LogFile
 from Configuration import ConfigFile
-
+import os
 log = LogFile("PluginManager")
 """
-  Service1   Service2   Service3   Service4
+ SFunc1   SFunc2   SFunc3  SFunc4
+     \         \  /         |
+  Service1   Service2   Service3   Service4  __services__
         \     /    \     /            |        
-        Plugin1    Plugin2         Plugin3
+        Plugin1    Plugin2         Plugin3   __plugins__
        /   |  \       |            /     \      These connections are made from
   Func1 Func2 Func3 Func4       Func5   Func6      the call to bindFunction
+                                                hooks are located at foo.Hooks
 
   Each service has a reference count. When a plugin is removed this number is
   decremented. When that hits 0 the service is removed. All the associated 
   functions are also removed.
   
 
-  __services__ maps the services name to a (object,references) tuple.
-  __plugins__ maps the plugins name to a (object,[servicelist],[funclist])
-  a service list is a list of service names
+  __services__ maps the services name to a (module,instance,references) tuple.
+  __plugins__ maps the plugins name to a (module,instance,[servicelist],[funclist])
+  servicelist: ["Service1","Service2","Service3","Service4"] updated as plugins
+                                                         require or prefer them.
+  funcmap:    {"Plugin1":[Func1,Func2,Func3], "Plugin2"...} 
   the funclist is a list of functions that have sbhook attributes
 """
 
-class PluginManager:
-    __services__ = {}#map of name to (module,instance, reference count)
-    __plugins__ = {} #map of name to (class,instance, [service names], [func list])
+class PluginManager: #we really only need the function and ref count
+    __services__ = {}#map of name to (module,instance, [service names], [func list], reference count)
+    __plugins__ = {} #map of name to (module,instance, [service names], [func list])
     root = None # This should be the providers name (and the directory its in)
+    def rmPyc(self,mod):
+#        print "rm:",os.getcwd()+"/"+path
+#        os.remove(os.path.join(os.getcwd(),path))
+#        for i in sys.modules.items():
+#            print i[0]
+        f = mod.__file__
+        if f[-1]!="c":
+            f+="c"
+        log.debug("Remove Module:",mod.__name__,"Deleting:",f)
+        del sys.modules[mod.__name__]
+        os.remove(f)
 
     def __init__(self, providerPath):
         log.debug("Creating PluginManager for provider <%s>"%providerPath)
         self.root = providerPath
+    def HasService(self, serv):
+        return self.__services__.has_key(serv)
 
     def HasPlugin(self, plug):
-        log.debug("HasPlugin",plug)
         return self.__plugins__.has_key(plug)
+
+    def GetService(self,servName):
+        s = self.__services__.get(servName,[None,None,1])[1]
+        return s
 
     def CheckRequirements(self, cls):
         """
@@ -46,28 +67,23 @@ class PluginManager:
         requirements = getattr(cls, "sbreq", None)
         if not requirements:  # no requirements, no problem!
             log.debug("No requirements.")
-            return True
+            return []
 
-        loaded ={} # a buffer for whats going into __services__
+        loaded = []
         for req in requirements:
             log.debug("Loading Requirement", req)
             serv = None
-            if self.__services__.has_key(req):
-                log.debug("Requirement already loaded")
-            else:
-                serv = self.LoadService(req)
-                if not serv:
-                    #we tried and it failed to load!
-                    log.error("Loading requirement failed. Failing")
-                    del loaded
-                    return False
-                loaded[req]=serv
-                log.debug("Requirement autoloaded")
+            serv = self.LoadService(req)
+            if not serv:
+                #we tried and it failed to load!
+                log.error("Loading requirement failed. Failing")
+                del loaded #This needs to be properly unloaded
+                return False
+            log.debug("Requirement autoloaded")
+            loaded+=[req]
 
-        self.__services__.update(loaded)
-        del loaded
         log.debug("Requirements met.")
-        return True
+        return loaded
 
     #preferences will try to load, but if not it's okay
     def CheckPreferences(self, cls):
@@ -76,68 +92,104 @@ class PluginManager:
         preferences = getattr(cls, "sbpref", None)
         if not preferences:
             log.debug("No preferences.")
-            return True
+            return []
 
-        loaded={}
+        loaded=[]
         for pref in preferences:
             log.debug("Loading Preference", pref)
-
-            if  self.__services__.has_key(pref):
-                log.debug("Preference already loaded")
+            serv = self.LoadService(pref)
+            if not serv:
+                log.warning("Preference loading failed.")
             else:
-                serv = self.LoadService(pref)
-                if not serv:
-                    log.warning("Preference loading failed.")
-                else:
-                    loaded[pref]=serv
-                    log.debug("Preference autoloaded")
-        self.__services__.update(loaded)
-        del loaded
+                loaded+=[pref]
+                log.debug("Preference autoloaded")
         log.debug("Preferences loaded.");
-        return True
+        return loaded
     
     def LoadService(self, pname):
+        """Called whenever a plugin is being loaded and it requires/prefers
+        a service. This will update the reference count if the module exists
+        if successful, this returns True, otherwise it returns False."""
+        s = self.__services__.get(pname)
+        log.debug("Loading service","%s.Services.%s" % (self.root, pname))
+        if s:
+            s[-1]+=1
+            log.debug("Service found","Adding reference",*s)
+            log.dict(self.__services__,"Services:")
+            return s[1]
+
         try:
-            log.debug("Loading service","%s.Services.%s" % (self.root, pname))
-            serv = __import__("%s.Services.%s" % (self.root, pname),
+            mod = __import__("%s.Services.%s" % (self.root, pname),
                     globals(), locals(), pname)
-            cls = getattr(serv, pname, None)
+            cls = getattr(mod, pname, None)
             if isclass(cls):  # plugin has a self-titled class
-                inst = cls()
-                self.__services__[pname] = (serv,inst,1)
+                services = self.CheckRequirements(cls)
+                if services == False:
+                    log.error("Requirements not met!")
+                    return False
+                services +=self.CheckPreferences(cls)
+ #               print pname,"Services:",services
+                inst = cls()#any exceptions get caught higher up in the stack
+    
+                #if we got here we have the requirements, get the hooks
+                
+                funcList= self.LoadHooks(inst)
+                log.note("Plugin loaded.","%s.Plugins.%s" % (self.root, pname))
+
+                self.__services__[pname] = [mod,inst,services,funcList,1]
                 log.debug("Service loaded", pname)
+                log.dict(self.__services__,"Services:")
                 return inst
             else:  # No self-titled class?
                 log.error("No self titled class for service" , pname)
         except:
-            log.exception("Exception while loading service")
+            log.exception("Exception while loading service",pname)
+            log.dict(self.__services__,"Services:")
         return False
 
     def LoadPlugin(self, pname):
-        log.debug("Loading plugin %s.Plugins.%s" % (self.root, pname))
-        plug = __import__("%s.Plugins.%s" % (self.root, pname),
+        log.note("Loading plugin %s.Plugins.%s" % (self.root, pname))
+        mod = __import__("%s.Plugins.%s" % (self.root, pname),
                 globals(), locals(), pname)
+#        print "Before loadplugin";self.tmp()
         #plugin classes should be put into some dict
         #and the associated services should be removed
         #if no other plugins are using it.
-        cls = getattr(plug, pname, None)
+        cls = getattr(mod, pname, None)
         if isclass(cls):  # plugin has a self-titled class
-            if not self.CheckRequirements(cls):
+            services = self.CheckRequirements(cls)
+            if services == False:
                 log.error("Requirements not met!")
+             #   print "Requirements not met.";self.tmp()
                 return False
-            self.CheckPreferences(cls)
-            inst = cls()
+            services +=self.CheckPreferences(cls)
+            inst = cls()#any exceptions get caught higher up in the stack
 
             #if we got here we have the requirements, get the hooks
             
-            self.LoadHooks(inst)
+            funcList= self.LoadHooks(inst)
+            log.note("Plugin loaded.","%s.Plugins.%s" % (self.root, pname))
+            self.__plugins__[pname]=(mod,inst,services,funcList)
+            #print "Plugin loaded";self.tmp()
             return inst
         else:  # No self-titled class?
             log.error("No self titled class for plugin %s" % pname)
+            #print "PluginLoad failed";self.tmp()
             return False
+
     def LoadHooks(self,inst):
         #inst.hooks
-        
+        def filter(memb):
+            if callable(memb):
+                return hasattr(memb,"hooks")
+            return False
+
+        hookFuncs = getmembers(inst,filter)
+        funcs = []
+        for name,func in hookFuncs:
+            log.debug("Adding hook",inst,func)
+            funcs.append(func)
+        return funcs
     def UnloadPlugin(self, pname):
         """Given the plugin name, this will attempt to unload the plugin.
         unloading a plugin consists of removing all the hooks from this
@@ -145,7 +197,30 @@ class PluginManager:
         it should unload services too, if they aren't needed by anyone else
         """
         log.debug("Unloading plugin %s.Plugins.%s" % (self.root, pname))
-        
+        if not self.HasPlugin(pname):
+            log.debug("Plugin wasn't loaded.",pname)
+            return
+        servs = self.__plugins__[pname][2]
+        self.rmPyc(self.__plugins__[pname][0])
+        del self.__plugins__[pname]
+        log.debug("Plugin Unloaded",pname,"Unloading services:",*servs)
+        for i in servs:
+            self.UnloadService(i)
+        return
+
+    def UnloadService(self,sname):
+        log.debug("Unloading service %s.Service.%s"%(self.root,sname))
+        if not self.HasService(sname):
+            log.debug("Service wasn't loaded.",sname)
+            return
+
+        serv = self.__services__[sname]
+        log.debug("Service found:",sname,*serv)
+        serv[-1]-=1
+        if not serv[-1]:
+            log.debug("No more references, deleting")
+            self.rmPyc(self.__services__[sname][0]) 
+            del self.__services__[sname]
 
     def GetServices(self, inst):
         slist = getattr(inst, "sbservs", [])
@@ -158,20 +233,27 @@ class PluginManager:
             For each hook in that plugin:
                 tryMatch(hook,event)
         """
+        
         log.debug("Matching", event)
         matched = []
-        for name,(cls,inst,servs,funcs) in self.__plugins__.items:#class instance services functions
+        for name,(cls,inst,servs,funcs,ref) in self.__services__.items():
+            for f in funcs:
+                args = self.tryMatch(f,event)
+                if args != None:
+                    matched += [(inst, f, args, servs)]
+
+        for name,(cls,inst,servs,funcs) in self.__plugins__.items():#class instance services functions
             for f in funcs:
                 args = self.tryMatch(f, event)
                 if args != None:
-                    matched += [(inst, f, args)]
+                    matched += [(inst, f, args, servs)]
         if matched:
-            log.debug("Matched: %i" % len(matched))
+            log.debug("Matched:",*matched)
             return matched
-        return False
+        return []
 
     def tryMatch(self, func, eventD):
-        for hookD in func.sbhook:
+        for hookD in func.hooks:
             args = {}
             matched = True
             for key, pattern in hookD.items():
@@ -216,12 +298,9 @@ class PluginManager:
             note.note("No Autoload configuration file")
 
     def Stop(self):
-        if self.__services__:
-            log.debug("Deleting services:", self.__services__)
-            for name, module in self.__services__.items():
-                log.debug("Removing service:", name)
-                del module
+        log.note("Stopping PluginManager")
+        for name, module in self.__services__.items():
+            self.UnloadService(name)
 
         for name, module in self.__plugins__.items():
-            log.debug("Removing plugin:", name)
-            del module
+            self.UnloadPlugin(name)

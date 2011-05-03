@@ -39,8 +39,7 @@ class Core:
         return cls
 
     def HandleEvent(self, event):
-        log.debug("HandleEvent")
-        log.dict(event)
+        log.dict(event,"HandleEvent")
 
         pm = self._PluginManager
         if not pm:
@@ -60,11 +59,9 @@ class Core:
         matches = pm.GetMatchingFunctions(event)
         log.debug("Matched %i hook(s)." % len(matches))
 
-        for inst, func, args in matches:
+        for inst, func, args, servs in matches:
             newEvent = dictJoin(event, dictJoin(args,
                 {"self": inst, "response": ro}))
-            log.debug("Getting services for:", inst)
-            servs = pm.GetServices(inst)
             log.debug("Services found for plugin:", servs)
             if servs:
                 log.debug("Event before processing:", newEvent)
@@ -77,11 +74,13 @@ class Core:
             servDict["c"]=self._Connector
             servDict["core"]=self
             servDict["config"]=self._Config
-            for serv in servs:
-                log.debug("Processing service",serv)
+            for servName in servs:
+                serv = pm.GetService(servName)
+                log.debug("Processing service",servName,serv)
                 call(serv.onEvent,servDict)
+
             if servs:
-                log.debug("Event after processing:", newEvent)
+                log.dict(newEvent,"Event after processing:")
             #issue 5 fix goes here
             pd.Enqueue((func, newEvent))
 
