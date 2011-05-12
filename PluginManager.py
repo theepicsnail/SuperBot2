@@ -1,6 +1,6 @@
 import sys
 from inspect import isclass, getmembers
-from re import match
+from re import search
 from Logging import LogFile
 from Configuration import ConfigFile
 import os
@@ -263,7 +263,7 @@ class PluginManager: #we really only need the function and ref count
                     # plugin wanted to match something the event didn't have
                     break
 
-                m = match(pattern, value)
+                m = search(pattern, value)
                 if m == None:
                     matched = False
                     break  # Didn't match
