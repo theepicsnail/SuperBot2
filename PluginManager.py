@@ -42,7 +42,10 @@ class PluginManager: #we really only need the function and ref count
             f+="c"
         log.debug("Remove Module:",mod.__name__,"Deleting:",f)
         del sys.modules[mod.__name__]
-        os.remove(f)
+        try:
+            os.remove(f)
+        except:
+            pass
 
     def __init__(self, providerPath):
         log.debug("Creating PluginManager for provider <%s>"%providerPath)
