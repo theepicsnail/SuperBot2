@@ -111,7 +111,7 @@ class Core:
 
         log.debug("Starting")
         log.debug("Auto loading plugins")
-        self._PluginManager.AutoLoad()
+        self.AutoLoad()
         log.debug("Auto load complete")
 
         if self._Connector:
@@ -128,6 +128,36 @@ class Core:
         if self._Connector:
             self._Connector.Stop()
 
+    def AutoLoad(self):
+        if not self._PluginManager:
+            return
+        pm = self._PluginManager
+        log.note("Starting autoload", "Root:" + pm.root)
+        cf = ConfigFile(pm.root, "Autoload")
+        lines = ["Configuration:"]
+        for i in cf:
+            lines.append(i)
+            for j in cf[i]:
+                lines.append("  %s=%s"%(j,cf[i,j]))
+        log.debug(*lines)
+        if cf:
+            log.debug("Autoloading plugins.")
+
+            names = cf["Plugins", "Names"]
+            log.debug("Autoloading plugins", names)
+            if names:
+                for name in names.split():
+                    pm.LoadPlugin(name)
+                log.debug("Autoloading finished.")
+                pd=self._PluginDispatcher
+                handler = pd.GetResponseHandler()
+                log.debug("Updating dedicated thread pool",self._ResponseObject,handler)
+                pd.EnsureDedicated(pm.GetDedicated(),self._ResponseObject,handler)
+                    
+        else:
+            log.note("No Autoload configuration file")
+
+ 
 
 if __name__ == "__main__":
     try:

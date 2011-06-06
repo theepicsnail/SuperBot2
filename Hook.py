@@ -20,12 +20,19 @@ def prefers(*plugins):
     return newClass
 
 
-#Do the checking for this aswell, args should map to str->str
+#TODO: the checking for this aswell, args should map to str->str
 #and func should be a function
 def bindFunction(**args):
     def newFunc(func):  # the actual descriptor
         attr = getattr(func, "hooks", [])
         attr.append(args)
         func.hooks=attr
+        return func
+    return newFunc
+
+
+def dedicated(**args):
+    def newFunc(func):
+        func.dedicated=True
         return func
     return newFunc

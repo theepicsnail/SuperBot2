@@ -27,16 +27,30 @@ log = LogFile("PluginManager")
   funcmap:    {"Plugin1":[Func1,Func2,Func3], "Plugin2"...} 
   the funclist is a list of functions that have sbhook attributes
 """
+class Plugin(object):
+    mod= None
+    inst=None
+    servs=[]
+    hooks=[]
+    dedicated=[]
+    def __init__(self, mod=None, inst=None, servs=[], hooks=[], dedicated=[]):
+        self.mod      = mod
+        self.inst     = inst
+        self.servs    = servs
+        self.hooks    = hooks
+        self.dedicated= dedicated
+        
+class Service(Plugin):
+    ref = 1
+    def __init__(self, mod, inst, servs, hooks, dedicated, ref=1):
+        super(Service,self).__init__(mod,inst,servs,hooks,dedicated)
+        self.ref = ref
 
 class PluginManager: #we really only need the function and ref count
-    __services__ = {}#map of name to (module,instance, [service names], [func list], reference count)
-    __plugins__ = {} #map of name to (module,instance, [service names], [func list])
+    __services__ = {}#map of name to Service
+    __plugins__ = {} #map of name to Plugin
     root = None # This should be the providers name (and the directory its in)
     def rmPyc(self,mod):
-#        print "rm:",os.getcwd()+"/"+path
-#        os.remove(os.path.join(os.getcwd(),path))
-#        for i in sys.modules.items():
-#            print i[0]
         f = mod.__file__
         if f[-1]!="c":
             f+="c"
@@ -57,8 +71,8 @@ class PluginManager: #we really only need the function and ref count
         return self.__plugins__.has_key(plug)
 
     def GetService(self,servName):
-        s = self.__services__.get(servName,[None,None,1])[1]
-        return s
+        s = self.__services__.get(servName,Plugin())
+        return s.inst
 
     def CheckRequirements(self, cls):
         """
@@ -116,10 +130,10 @@ class PluginManager: #we really only need the function and ref count
         s = self.__services__.get(pname)
         log.debug("Loading service","%s.Services.%s" % (self.root, pname))
         if s:
-            s[-1]+=1
-            log.debug("Service found","Adding reference",*s)
+            s.ref+=1
+            log.debug("Service found","Adding reference",s)
             log.dict(self.__services__,"Services:")
-            return s[1]
+            return s.inst
 
         try:
             mod = __import__("%s.Services.%s" % (self.root, pname),
@@ -137,9 +151,10 @@ class PluginManager: #we really only need the function and ref count
                 #if we got here we have the requirements, get the hooks
                 
                 funcList= self.LoadHooks(inst)
+                dedList= self.LoadDedicated(inst)
                 log.note("Plugin loaded.","%s.Plugins.%s" % (self.root, pname))
-
-                self.__services__[pname] = [mod,inst,services,funcList,1]
+                s = Service(mod,inst,services,funcList,dedList,1)
+                self.__services__[pname] = s
                 log.debug("Service loaded", pname)
                 log.dict(self.__services__,"Services:")
                 return inst
@@ -155,7 +170,7 @@ class PluginManager: #we really only need the function and ref count
         mod = __import__("%s.Plugins.%s" % (self.root, pname),
                 globals(), locals(), pname)
 #        print "Before loadplugin";self.tmp()
-        #plugin classes should be put into some dict
+        #plugin classes should  be put into some dict
         #and the associated services should be removed
         #if no other plugins are using it.
         cls = getattr(mod, pname, None)
@@ -163,7 +178,6 @@ class PluginManager: #we really only need the function and ref count
             services = self.CheckRequirements(cls)
             if services == False:
                 log.error("Requirements not met!")
-             #   print "Requirements not met.";self.tmp()
                 return False
             services +=self.CheckPreferences(cls)
             inst = cls()#any exceptions get caught higher up in the stack
@@ -171,8 +185,10 @@ class PluginManager: #we really only need the function and ref count
             #if we got here we have the requirements, get the hooks
             
             funcList= self.LoadHooks(inst)
+            dedList = self.LoadDedicated(inst)
+            
             log.note("Plugin loaded.","%s.Plugins.%s" % (self.root, pname))
-            self.__plugins__[pname]=(mod,inst,services,funcList)
+            self.__plugins__[pname]=Plugin(mod,inst,services,funcList,dedList)
             #print "Plugin loaded";self.tmp()
             return inst
         else:  # No self-titled class?
@@ -193,6 +209,24 @@ class PluginManager: #we really only need the function and ref count
             log.debug("Adding hook",inst,func)
             funcs.append(func)
         return funcs
+
+    def LoadDedicated(self,inst):
+        
+        def f(memb):
+            sys.stderr.write("Get memb:%s %s\n"%(str(inst),str(memb)))
+            if callable(memb):
+                if getattr(memb,"dedicated",False):
+                    return True
+            return False
+        sys.stderr.write("dir\n%s\n"%str(dir(inst)))
+        dedFuncs = getmembers(inst,f)
+        sys.stderr.write(str(inst)+str(len(dedFuncs))+"\n")
+        funcs = []
+        for name,func in dedFuncs:
+            log.debug("Adding dedicated hook",inst,func)
+            funcs.append(func)
+        return funcs
+
     def UnloadPlugin(self, pname):
         """Given the plugin name, this will attempt to unload the plugin.
         unloading a plugin consists of removing all the hooks from this
@@ -203,8 +237,8 @@ class PluginManager: #we really only need the function and ref count
         if not self.HasPlugin(pname):
             log.debug("Plugin wasn't loaded.",pname)
             return
-        servs = self.__plugins__[pname][2]
-        self.rmPyc(self.__plugins__[pname][0])
+        servs = self.__plugins__[pname].servs
+        self.rmPyc(self.__plugins__[pname].mod)
         del self.__plugins__[pname]
         log.debug("Plugin Unloaded",pname,"Unloading services:",*servs)
         for i in servs:
@@ -218,17 +252,24 @@ class PluginManager: #we really only need the function and ref count
             return
 
         serv = self.__services__[sname]
-        log.debug("Service found:",sname,*serv)
-        serv[-1]-=1
-        if not serv[-1]:
+        log.debug("Service found:",sname,serv)
+        serv.ref-=1
+        if not serv.ref:
             log.debug("No more references, deleting")
-            self.rmPyc(self.__services__[sname][0]) 
-            del self.__services__[sname]
+            self.rmPyc(self.__services__[sname].mod) 
+            del self.__services__[sname].inst
 
     def GetServices(self, inst):
         slist = getattr(inst, "sbservs", [])
         log.debug("Get services", inst, slist)
         return slist
+    def GetDedicated(self):
+        ded= []
+        for name,serv in self.__services__.items():
+            ded+=serv.dedicated
+        for name,plug in self.__plugins__.items():
+            ded+=plug.dedicated
+        return ded
 
     def GetMatchingFunctions(self, event):
         """
@@ -239,17 +280,17 @@ class PluginManager: #we really only need the function and ref count
         
         log.debug("Matching", event)
         matched = []
-        for name,(cls,inst,servs,funcs,ref) in self.__services__.items():
-            for f in funcs:
+        for name,serv in self.__services__.items():
+            for f in serv.hooks:
                 args = self.tryMatch(f,event)
                 if args != None:
-                    matched += [(inst, f, args, servs)]
+                    matched += [(serv.inst, f, args, serv.servs)]
 
-        for name,(cls,inst,servs,funcs) in self.__plugins__.items():#class instance services functions
-            for f in funcs:
+        for name,plug in self.__plugins__.items():#class instance services functions
+            for f in plug.hooks:
                 args = self.tryMatch(f, event)
                 if args != None:
-                    matched += [(inst, f, args, servs)]
+                    matched += [(plug.inst, f, args, plug.servs)]
         if matched:
             log.debug("Matched:",*matched)
             return matched
@@ -259,6 +300,8 @@ class PluginManager: #we really only need the function and ref count
         for hookD in func.hooks:
             args = {}
             matched = True
+#            print eventD
+#            print hookD
             for key, pattern in hookD.items():
                 value = eventD.get(key)
                 if value == None:
@@ -270,35 +313,15 @@ class PluginManager: #we really only need the function and ref count
                 if m == None:
                     matched = False
                     break  # Didn't match
-
+#                print "Matched."
                 for k, v in m.groupdict().items():  # named capture groups
                     args[k] = v
                 for i, v in enumerate(m.groups()):  # unnamed
                     args[key + str(i)] = v
+#            print "-"*30
             if matched:
                 return args
         return None
-
-    def AutoLoad(self):        
-        log.debug("Starting autoload", "Root:" + self.root)
-        cf = ConfigFile(self.root, "Autoload")
-        lines = ["Configuration:"]
-        for i in cf:
-            lines.append(i)
-            for j in cf[i]:
-                lines.append("  %s=%s"%(j,cf[i,j]))
-        log.debug(*lines)
-
-        if cf:
-            log.debug("Autoloading plugins and services.")
-
-            names = cf["Plugins", "Names"]
-            log.debug("Autoloading plugins", names)
-            if names:
-                for name in names.split():
-                    self.LoadPlugin(name)
-        else:
-            note.note("No Autoload configuration file")
 
     def Stop(self):
         log.note("Stopping PluginManager")
