@@ -13,6 +13,8 @@ git clone git://github.com/theepicsnail/SuperBot2.git
 git submodule init
 git submodule update
 #edit the configuration for the sb2irc provider
+mv SuperBot2IRC/SuperBot2IRC.cfg.example SuperBot2IRC/SuperBot2IRC.cfg
+mv SuperBot2IRC/Autoload.cfg.example SuperBot2IRC/Autoload.cfg
 vim SuperBot2IRC/SuperBot2IRC.cfg
 vim SuperBot2IRC/Autoload.cfg
 
