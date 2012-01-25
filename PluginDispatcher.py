@@ -146,6 +146,9 @@ class PluginDispatcher:
     def EnsureDedicated(self,funcList,responseObject,callback):
         #should this remove plugins that are not in funcList?
         pdLog.debug("Ensure dedicated",funcList,responseObject,callback)
+        for cb,th in self.__dedicatedThreads__.items():
+                if not cb in funcList:
+                    t.Stop()
         for func in funcList:
             if not self.__dedicatedThreads__.has_key(func):
                 self.CreateDedicatedThread(func,responseObject, callback)
@@ -153,7 +156,6 @@ class PluginDispatcher:
                 del self.__dedicatedThreads__[func]
                 pdLog.debug("Restarting dead dedicated thread.")
                 self.CreateDedicatedThread(func,responseObject, callback)
-                
 
     def Dequeue(self):
         pdLog.debug("Dequeuing")
