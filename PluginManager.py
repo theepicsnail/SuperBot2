@@ -45,7 +45,8 @@ class Service(Plugin):
     def __init__(self, mod, inst, servs, hooks, dedicated, ref=1):
         super(Service,self).__init__(mod,inst,servs,hooks,dedicated)
         self.ref = ref
-
+    def repr(self):
+        return "<%i>%r"%(self.ref,self.inst)
 class PluginManager: #we really only need the function and ref count
     __services__ = {}#map of name to Service
     __plugins__ = {} #map of name to Plugin
@@ -236,20 +237,20 @@ class PluginManager: #we really only need the function and ref count
         log.debug("Unloading plugin %s.Plugins.%s" % (self.root, pname))
         if not self.HasPlugin(pname):
             log.debug("Plugin wasn't loaded.",pname)
-            return
+            return False
         servs = self.__plugins__[pname].servs
         self.rmPyc(self.__plugins__[pname].mod)
         del self.__plugins__[pname]
         log.debug("Plugin Unloaded",pname,"Unloading services:",*servs)
         for i in servs:
             self.UnloadService(i)
-        return
+        return True
 
     def UnloadService(self,sname):
         log.debug("Unloading service %s.Service.%s"%(self.root,sname))
         if not self.HasService(sname):
             log.debug("Service wasn't loaded.",sname)
-            return
+            return False
 
         serv = self.__services__[sname]
         log.debug("Service found:",sname,serv)
@@ -258,6 +259,7 @@ class PluginManager: #we really only need the function and ref count
             log.debug("No more references, deleting")
             self.rmPyc(self.__services__[sname].mod) 
             del self.__services__[sname].inst
+        return True
 
     def GetServices(self, inst):
         slist = getattr(inst, "sbservs", [])
@@ -269,6 +271,7 @@ class PluginManager: #we really only need the function and ref count
             ded+=serv.dedicated
         for name,plug in self.__plugins__.items():
             ded+=plug.dedicated
+        log.debug("GetDedicated",*ded)
         return ded
 
     def GetMatchingFunctions(self, event):
@@ -308,8 +311,11 @@ class PluginManager: #we really only need the function and ref count
                     matched = False
                     # plugin wanted to match something the event didn't have
                     break
-
-                m = search(pattern, value)
+                try:
+                    m = search(pattern, value)
+                except:
+                    log.exception("Exception thrown while searching <{}><{}>".format(pattern,value))
+                    m=None
                 if m == None:
                     matched = False
                     break  # Didn't match

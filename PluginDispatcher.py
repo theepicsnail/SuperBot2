@@ -148,7 +148,7 @@ class PluginDispatcher:
         pdLog.debug("Ensure dedicated",funcList,responseObject,callback)
         for cb,th in self.__dedicatedThreads__.items():
                 if not cb in funcList:
-                    t.Stop()
+                    th.Stop()
         for func in funcList:
             if not self.__dedicatedThreads__.has_key(func):
                 self.CreateDedicatedThread(func,responseObject, callback)

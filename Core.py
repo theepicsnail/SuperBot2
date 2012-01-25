@@ -82,6 +82,7 @@ class Core:
             if servs:
                 log.dict(newEvent,"Event after processing:")
             #issue 5 fix goes here
+            newEvent.update(servDict)
             pd.Enqueue((func, newEvent))
 
     def __init__(self):
