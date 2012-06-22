@@ -61,6 +61,16 @@ class PluginDispatcherDedicatedThread(threading.Thread):
                     pdLog.exception("Not recovering. Shuttind down.")
                     self.Stop()
                     return
+            delayLeft = self.callback.delay
+            endTime = delayLeft + time()
+            while time() < endTime:
+                delay = min(endTime-time(),1)
+                pdLog.debug("Delaying",delay)
+                sleep(delay)
+                if not self.active:
+                    self.Stop()
+                    return
+
     def Stop(self):
         pddtLog.note("Stopping.")
         self.active = False            

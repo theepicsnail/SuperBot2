@@ -37,11 +37,10 @@ def bindFunction(**args):
     return newFunc
 
 
-def dedicated(**args):
+def dedicated(delay=1):
     def newFunc(func):
-        log.debug("Dedicated",func)
-        log.dict(args)
-
+        log.debug("Dedicated",func,delay)
+        func.delay = delay
         func.dedicated=True
         return func
     return newFunc
