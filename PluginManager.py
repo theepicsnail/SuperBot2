@@ -214,14 +214,11 @@ class PluginManager: #we really only need the function and ref count
     def LoadDedicated(self,inst):
         
         def f(memb):
-            sys.stderr.write("Get memb:%s %s\n"%(str(inst),str(memb)))
             if callable(memb):
                 if getattr(memb,"dedicated",False):
                     return True
             return False
-        sys.stderr.write("dir\n%s\n"%str(dir(inst)))
         dedFuncs = getmembers(inst,f)
-        sys.stderr.write(str(inst)+str(len(dedFuncs))+"\n")
         funcs = []
         for name,func in dedFuncs:
             log.debug("Adding dedicated hook",inst,func)
